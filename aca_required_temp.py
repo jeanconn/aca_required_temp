@@ -65,7 +65,7 @@ def get_agasc_cone(ra, dec, time=None, faint_lim=10.8):
 def select_fov_stars(ra, dec, roll, field):
     edgepad = characteristics.EDGE_DIST / 5.
     q = Quat((ra, dec, roll))
-    yag, zag = radec2yagzag(field['RA'], field['DEC'], q)
+    yag, zag = radec2yagzag(field['RA_PMCORR'], field['DEC_PMCORR'], q)
     row, col = chandra_aca.yagzag_to_pixels(yag * 3600,
                                             zag * 3600, allow_bad=True)
     in_fov = field[(row < (512 - edgepad))
