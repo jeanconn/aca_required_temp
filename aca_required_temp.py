@@ -91,7 +91,9 @@ def max_temp(ra, dec, roll, time):
         t_ccd, n_acq = t_ccd_warm_limit(date=time,
                                         mags=fov_stars['MAG_ACA'],
                                         colors=fov_stars['COLOR1'],
-                                        min_n_acq=characteristics.N_ACQ_STARS)
+                                        min_n_acq=characteristics.N_ACQ_STARS,
+                                        cold_t_ccd = characteristics.COLD_T_CCD,
+                                        warm_t_ccd = characteristics.WARM_T_CCD)
         TEMP_CACHE[id_hash] = (t_ccd, n_acq)
     return t_ccd
 
@@ -146,7 +148,12 @@ def temps_for_attitude(ra, dec, start_day='2014-09-01', stop_day='2015-12-31'):
         if day_pitch < 45 or day_pitch > 170:
             continue
         nom_roll_temp = max_temp(ra, dec, nom_roll, time=day)
-        best_temp, best_roll = best_temp_roll(ra, dec, nom_roll, day_pitch, time=day)
+        # if we can get the nominal roll catalog at warmest temp, why check the rest?
+        if nom_roll_temp == characteristics.WARM_T_CCD:
+            best_temp = nom_roll_temp
+            best_roll = nom_roll
+        else:
+            best_temp, best_roll = best_temp_roll(ra, dec, nom_roll, day_pitch, time=day)
         # should we have values or skip entries for None here?
         if best_temp is None:
             continue
