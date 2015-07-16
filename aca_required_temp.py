@@ -152,11 +152,11 @@ def temps_for_attitude(ra, dec, start_day='2014-09-01', stop_day='2015-12-31'):
             continue
         temps["{}".format(day.date[0:8])] = {
             'day': day.date,
-            'pitch': day_pitch,
-            'nom_roll': nom_roll,
-            'nom_roll_temp': nom_roll_temp,
-            'best_roll': best_roll,
-            'best_temp': best_temp}
+            'pitch': "{:.2f}".format(day_pitch),
+            'nom_roll': "{:.2f}".format(nom_roll),
+            'nom_roll_temp': "{:.2f}".format(nom_roll_temp),
+            'best_roll': "{:.2f}".format(best_roll),
+            'best_temp': "{:.2f}".format(best_temp)}
     table = Table(temps.values())
     # reorder
     return table['day', 'pitch',
