@@ -118,24 +118,6 @@ def best_temp_roll(ra, dec, nom_roll, day_pitch, time):
     return best_temp, best_roll
 
 
-#def check_roll_independent(ra, dec, time):
-#    # Not using module get_agasc_cone because I don't want
-#    # this smaller radius field in cache
-#    small = agasc.get_agasc_cone(ra, dec, radius=0.7, date=time)
-#    # just filter in place for now
-#    small = small[small['CLASS'] == 0]
-#    small = small[small['ASPQ1'] == 0]
-#    #field = field[(field['COLOR1'] < 0.699999) | (field['COLOR1'] > 0.700001)]
-#    small = small[small['COLOR1'] != 0.7]
-#    small = small[small['COLOR1'] != 1.5]
-#    small.sort('MAG_ACA')
-#    field = get_agasc_cone(ra, dec, time)
-#    for star in field[0:8]:
-#        if star['AGASC_ID'] not in small[0:8]['AGASC_ID']:
-#            return False
-#    return True
-
-
 def temps_for_attitude(ra, dec, start_day='2014-09-01', stop_day='2015-12-31'):
     # reset the caches at every new attitude
     global TEMP_CACHE
@@ -149,10 +131,6 @@ def temps_for_attitude(ra, dec, start_day='2014-09-01', stop_day='2015-12-31'):
     AGASC_MID_TIME = DateTime((DateTime(start_day).secs + DateTime(stop_day).secs)
                               / 2).date
 
-#    # on a long shot, check to see if the 8 brightest stars in the field
-#    # are contained within the roll-independent region
-#    roll_independent = check_roll_independent(ra, dec, start_day)
-#
     # get a list of days
     day = DateTime(start_day)
     days = []
@@ -168,16 +146,6 @@ def temps_for_attitude(ra, dec, start_day='2014-09-01', stop_day='2015-12-31'):
         if day_pitch < 45 or day_pitch > 170:
             continue
         nom_roll_temp = max_temp(ra, dec, nom_roll, time=day)
-#        # just skip the roll-range searches if roll-independent
-#        if roll_independent:
-#            temps["{}".format(day.date[0:8])] = {
-#                'day': day.date,
-#                'pitch': day_pitch,
-#                'nom_roll': nom_roll,
-#                'nom_roll_temp': nom_roll_temp,
-#                'best_roll': nom_roll,
-#                'best_temp': nom_roll_temp}
-#            continue
         best_temp, best_roll = best_temp_roll(ra, dec, nom_roll, day_pitch, time=day)
         # should we have values or skip entries for None here?
         if best_temp is None:
