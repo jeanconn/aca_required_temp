@@ -50,13 +50,13 @@ def get_agasc_cone(ra, dec, time=None, faint_lim=10.8):
         field = AGASC_CACHE["{:.8f}_{:.8f}".format(ra, dec)]
     else:
         field = agasc.get_agasc_cone(ra, dec, date=time)
-        # just filter in place for now
-        field = field[field['MAG_ACA'] < faint_lim]
-        field = field[field['CLASS'] == 0]
-        field = field[field['ASPQ1'] == 0]
-        #field = field[(field['COLOR1'] < 0.699999) | (field['COLOR1'] > 0.700001)]
-        field = field[field['COLOR1'] != 0.7]
-        field = field[field['COLOR1'] != 1.5]
+        cols = ['AGASC_ID', 'MAG_ACA', 'COLOR1',
+                'RA_PMCORR', 'DEC_PMCORR']
+        sub_field = field[(field['MAG_ACA'] < faint_lim)
+                          & (field['CLASS'] == 0)
+                          & (field['ASPQ1'] == 0)
+                          & (field['COLOR1'] != 0.7)
+                          & (field['COLOR1'] != 1.5)][cols]
         field.sort('MAG_ACA')
         AGASC_CACHE["{:.8f}_{:.8f}".format(ra, dec)] = field
     return field
