@@ -168,12 +168,12 @@ def temps_for_attitude(ra, dec, start_day='2014-09-01', stop_day='2015-12-31'):
             'nom_roll_temp': "{:.2f}".format(nom_roll_temp),
             'best_roll': "{:.2f}".format(best_roll),
             'best_temp': "{:.2f}".format(best_temp)}
-    table = Table(temps.values())
-    # reorder
-    return table['day', 'pitch',
-                 'nom_roll', 'nom_roll_temp',
-                 'best_roll', 'best_temp']
+    table = Table(temps.values())['day', 'pitch',
+                                  'nom_roll', 'nom_roll_temp',
+                                  'best_roll', 'best_temp']
 
+    table.sort('day')
+    return table
 
 def main():
     """
@@ -183,7 +183,7 @@ def main():
     temp_table = temps_for_attitude(opt.ra, opt.dec,
                                     start_day=opt.start_day,
                                     stop_day=opt.stop_day)
-    temp_table.write(opt.out, format='ascii.tab')
+    temp_table.write(opt.out, format='ascii.fixed_width_two_line')
 
 if __name__ == '__main__':
     main()
