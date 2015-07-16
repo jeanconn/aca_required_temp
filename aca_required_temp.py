@@ -157,7 +157,11 @@ def temps_for_attitude(ra, dec, start_day='2014-09-01', stop_day='2015-12-31'):
             'nom_roll_temp': nom_roll_temp,
             'best_roll': best_roll,
             'best_temp': best_temp}
-    return Table(temps.values())
+    table = Table(temps.values())
+    # reorder
+    return table['day', 'pitch',
+                 'nom_roll', 'nom_roll_temp',
+                 'best_roll', 'best_temp']
 
 
 def main():
