@@ -114,12 +114,18 @@ def best_temp_roll(ra, dec, nom_roll, day_pitch, time):
     rolldev = get_rolldev(day_pitch)
     # Quat doesn't care about the domain of roll, so I don't have to
     # do anything tricky with 180/360 etc
-    for roll in np.arange(nom_roll - rolldev, nom_roll + rolldev, step=.5):
-        roll_temp = max_temp(ra, dec, roll, time=time)
-        if roll_temp is not None:
-            if best_temp is None or roll_temp > best_temp:
-                best_temp = roll_temp
-                best_roll = roll
+    for rolldiff in np.arange(0, rolldev, step=.5):
+        # Walk out from nom_roll instead of just through the range,
+        # and quit if we get one that is at the warm limit
+        # That will give us the closest-to-nominal best choice
+        for roll in [nom_roll - rolldiff, nom_roll + rolldiff]:
+            roll_temp = max_temp(ra, dec, roll, time=time)
+            if roll_temp is not None:
+                if best_temp is None or roll_temp > best_temp:
+                    best_temp = roll_temp
+                    best_roll = roll
+                if best_temp == characteristics.WARM_T_CCD:
+                    break
     return best_temp, best_roll
 
 
