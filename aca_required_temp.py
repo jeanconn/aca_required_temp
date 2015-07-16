@@ -106,6 +106,10 @@ def get_rolldev(pitch):
 
 
 def best_temp_roll(ra, dec, nom_roll, day_pitch, time):
+    """
+    Loop over possible roll range for this pitch and return best temp/roll
+    combination
+    """
     best_temp = None
     best_roll = None
     rolldev = get_rolldev(day_pitch)
