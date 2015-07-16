@@ -33,9 +33,9 @@ def get_options():
                         type=float)
     parser.add_argument("--out",
                         default="roll_temps.dat")
-    parser.add_argument("--start_day",
+    parser.add_argument("--start-day",
                         default="2014-09-01")
-    parser.add_argument("--stop_day",
+    parser.add_argument("--stop-day",
                         default="2015-12-31")
     opt = parser.parse_args()
     return opt
