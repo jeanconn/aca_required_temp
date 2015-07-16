@@ -177,7 +177,6 @@ def main():
 if __name__ == '__main__':
     main()
 
-#temps = temps_for_attitude(163.586096, 14.663301)
 
 
 
