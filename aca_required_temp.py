@@ -81,16 +81,15 @@ def max_temp(ra, dec, roll, time):
     fov_stars = select_fov_stars(ra, dec, roll, field)
     if not len(fov_stars):
         return None
-    # get brightest 8 in place, these should already be sorted
-    if len(fov_stars) > 8:
-        fov_stars = fov_stars[0:8]
-    id_hash = hashlib.md5(fov_stars['AGASC_ID']).hexdigest()
+    # take the 8 brightest
+    stars = fov_stars[0:8]
+    id_hash = hashlib.md5(stars['AGASC_ID']).hexdigest()
     if id_hash in TEMP_CACHE:
         t_ccd, n_acq = TEMP_CACHE[id_hash]
     else:
         t_ccd, n_acq = t_ccd_warm_limit(date=time,
-                                        mags=fov_stars['MAG_ACA'],
-                                        colors=fov_stars['COLOR1'],
+                                        mags=stars['MAG_ACA'],
+                                        colors=stars['COLOR1'],
                                         min_n_acq=characteristics.N_ACQ_STARS,
                                         cold_t_ccd = characteristics.COLD_T_CCD,
                                         warm_t_ccd = characteristics.WARM_T_CCD)
