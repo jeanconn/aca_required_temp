@@ -127,15 +127,13 @@ def temps_for_attitude(ra, dec, start='2014-09-01', stop='2015-12-31'):
     cone_stars = get_agasc_cone(ra, dec, time=agasc_mid_time)
 
     # get a list of days
-    day = DateTime(start)
-    days = []
-    while day.secs < DateTime(stop).secs:
-        days.append(day)
-        day = day + 1
+    start = DateTime(start)
+    stop = DateTime(stop)
+    days = start + np.arange(stop - start)
 
     temps = {}
     # loop over them
-    for day in days:
+    for day in days.date:
         nom_roll = nominal_roll(ra, dec, time=day)
         day_pitch = pitch(ra, dec, time=day)
         if day_pitch < 45 or day_pitch > 170:
@@ -154,8 +152,8 @@ def temps_for_attitude(ra, dec, start='2014-09-01', stop='2015-12-31'):
         # should we have values or skip entries for None here?
         if best_t_ccd is None:
             continue
-        temps["{}".format(day.date[0:8])] = {
-            'day': day.date,
+        temps["{}".format(day[0:8])] = {
+            'day': day,
             'pitch': "{:.2f}".format(day_pitch),
             'nom_roll': "{:.2f}".format(nom_roll),
             'nom_roll_t_ccd': "{:.2f}".format(nom_roll_t_ccd),
