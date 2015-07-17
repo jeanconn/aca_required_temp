@@ -14,14 +14,10 @@ from astropy.table import Table
 
 ROLL_TABLE = Table.read('roll_limits.dat', format='ascii')
 
-# Save a field until we move on to the next ra/dec
-AGASC_CACHE = {}
-
 # Save temperature calc a combination of stars
 # indexed by hash of agasc ids
 TEMP_CACHE = {}
 
-AGASC_MID_TIME = None
 
 def get_options():
     import argparse
@@ -42,23 +38,15 @@ def get_options():
 
 
 def get_agasc_cone(ra, dec, time=None, faint_lim=10.8):
-    if time is None:
-        time = AGASC_MID_TIME
-    global AGASC_CACHE
-    # using a cache ignores proper motion, but this should be fine
-    if "{:.8f}_{:.8f}".format(ra, dec) in AGASC_CACHE:
-        field = AGASC_CACHE["{:.8f}_{:.8f}".format(ra, dec)]
-    else:
-        field = agasc.get_agasc_cone(ra, dec, date=time)
-        cols = ['AGASC_ID', 'MAG_ACA', 'COLOR1',
-                'RA_PMCORR', 'DEC_PMCORR']
-        sub_field = field[(field['MAG_ACA'] < faint_lim)
-                          & (field['CLASS'] == 0)
-                          & (field['ASPQ1'] == 0)
-                          & (field['COLOR1'] != 0.7)
-                          & (field['COLOR1'] != 1.5)][cols]
-        sub_field.sort('MAG_ACA')
-        AGASC_CACHE["{:.8f}_{:.8f}".format(ra, dec)] = sub_field
+    field = agasc.get_agasc_cone(ra, dec, date=time)
+    cols = ['AGASC_ID', 'MAG_ACA', 'COLOR1',
+            'RA_PMCORR', 'DEC_PMCORR']
+    sub_field = field[(field['MAG_ACA'] < faint_lim)
+                      & (field['CLASS'] == 0)
+                      & (field['ASPQ1'] == 0)
+                      & (field['COLOR1'] != 0.7)
+                      & (field['COLOR1'] != 1.5)][cols]
+    sub_field.sort('MAG_ACA')
     return sub_field
 
 
@@ -75,10 +63,8 @@ def select_fov_stars(ra, dec, roll, field):
     return in_fov
 
 
-def max_temp(ra, dec, roll, time):
-    global TEMP_CACHE
-    field = get_agasc_cone(ra, dec)
-    fov_stars = select_fov_stars(ra, dec, roll, field)
+def max_temp(ra, dec, roll, time, cone_stars):
+    fov_stars = select_fov_stars(ra, dec, roll, cone_stars)
     if not len(fov_stars):
         return None
     # take the 8 brightest
@@ -104,7 +90,7 @@ def get_rolldev(pitch):
     return ROLL_TABLE['rolldev'][idx - 1]
 
 
-def best_temp_roll(ra, dec, nom_roll, day_pitch, time):
+def best_temp_roll(ra, dec, nom_roll, day_pitch, time, cone_stars):
     """
     Loop over possible roll range for this pitch and return best temp/roll
     combination
@@ -119,7 +105,7 @@ def best_temp_roll(ra, dec, nom_roll, day_pitch, time):
         # and quit if we get one that is at the warm limit
         # That will give us the closest-to-nominal best choice
         for roll in [nom_roll - rolldiff, nom_roll + rolldiff]:
-            roll_temp = max_temp(ra, dec, roll, time=time)
+            roll_temp = max_temp(ra, dec, roll, time=time, cone_stars=cone_stars)
             if roll_temp is not None:
                 if best_temp is None or roll_temp > best_temp:
                     best_temp = roll_temp
@@ -133,14 +119,14 @@ def temps_for_attitude(ra, dec, start_day='2014-09-01', stop_day='2015-12-31'):
     # reset the caches at every new attitude
     global TEMP_CACHE
     TEMP_CACHE = {}
-    global AGASC_CACHE
-    AGASC_CACHE = {}
 
     # set the agasc lookup time to be in the middle of the cycle for
     # proper motion correction
-    global AGASC_MID_TIME
-    AGASC_MID_TIME = DateTime((DateTime(start_day).secs + DateTime(stop_day).secs)
+    agasc_mid_time = DateTime((DateTime(start_day).secs + DateTime(stop_day).secs)
                               / 2).date
+
+    # Get stars in this field
+    cone_stars = get_agasc_cone(ra, dec, time=agasc_mid_time)
 
     # get a list of days
     day = DateTime(start_day)
@@ -156,13 +142,17 @@ def temps_for_attitude(ra, dec, start_day='2014-09-01', stop_day='2015-12-31'):
         day_pitch = pitch(ra, dec, time=day)
         if day_pitch < 45 or day_pitch > 170:
             continue
-        nom_roll_temp = max_temp(ra, dec, nom_roll, time=day)
+
+        nom_roll_temp = max_temp(ra, dec, nom_roll, time=day, cone_stars=cone_stars)
         # if we can get the nominal roll catalog at warmest temp, why check the rest?
         if nom_roll_temp == characteristics.WARM_T_CCD:
             best_temp = nom_roll_temp
             best_roll = nom_roll
         else:
-            best_temp, best_roll = best_temp_roll(ra, dec, nom_roll, day_pitch, time=day)
+            best_temp, best_roll = best_temp_roll(ra, dec, nom_roll,
+                                                  day_pitch,
+                                                  time=day,
+                                                  cone_stars=cone_stars)
         # should we have values or skip entries for None here?
         if best_temp is None:
             continue
