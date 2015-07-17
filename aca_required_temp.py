@@ -1,7 +1,6 @@
 
 import numpy as np
 
-import characteristics
 import agasc
 from Chandra.Time import DateTime
 from Ska.Sun import nominal_roll, pitch
@@ -10,6 +9,11 @@ from Quaternion import Quat
 import chandra_aca
 from starcheck.star_probs import t_ccd_warm_limit
 from astropy.table import Table
+
+N_ACQ_STARS = 5
+EDGE_DIST = 30
+COLD_T_CCD = -21
+WARM_T_CCD = -5
 
 ROLL_TABLE = Table.read('roll_limits.dat', format='ascii')
 
@@ -49,7 +53,7 @@ def get_agasc_cone(ra, dec, time=None, faint_lim=10.8):
 
 
 def select_fov_stars(ra, dec, roll, cone_stars):
-    edgepad = characteristics.EDGE_DIST / 5.
+    edgepad = EDGE_DIST / 5.
     q = Quat((ra, dec, roll))
     yag, zag = radec2yagzag(cone_stars['RA_PMCORR'], cone_stars['DEC_PMCORR'], q)
     row, col = chandra_aca.yagzag_to_pixels(yag * 3600,
@@ -74,9 +78,9 @@ def max_temp(ra, dec, roll, time, cone_stars):
         t_ccd, n_acq = t_ccd_warm_limit(date=time,
                                         mags=stars['MAG_ACA'],
                                         colors=stars['COLOR1'],
-                                        min_n_acq=characteristics.N_ACQ_STARS,
-                                        cold_t_ccd = characteristics.COLD_T_CCD,
-                                        warm_t_ccd = characteristics.WARM_T_CCD)
+                                        min_n_acq=N_ACQ_STARS,
+                                        cold_t_ccd=COLD_T_CCD,
+                                        warm_t_ccd=WARM_T_CCD)
         TEMP_CACHE[id_hash] = (t_ccd, n_acq)
     return t_ccd
 
@@ -108,7 +112,7 @@ def best_temp_roll(ra, dec, nom_roll, day_pitch, time, cone_stars):
                 if best_t_ccd is None or roll_t_ccd > best_t_ccd:
                     best_t_ccd = roll_t_ccd
                     best_roll = roll
-                if best_t_ccd == characteristics.WARM_T_CCD:
+                if best_t_ccd == WARM_T_CCD:
                     break
     return best_t_ccd, best_roll
 
@@ -141,7 +145,7 @@ def temps_for_attitude(ra, dec, start='2014-09-01', stop='2015-12-31'):
 
         nom_roll_t_ccd = max_temp(ra, dec, nom_roll, time=day, cone_stars=cone_stars)
         # if we can get the nominal roll catalog at warmest temp, why check the rest?
-        if nom_roll_t_ccd == characteristics.WARM_T_CCD:
+        if nom_roll_t_ccd == WARM_T_CCD:
             best_t_ccd = nom_roll_t_ccd
             best_roll = nom_roll
         else:
