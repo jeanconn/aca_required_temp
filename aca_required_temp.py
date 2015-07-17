@@ -37,28 +37,28 @@ def get_options():
 
 
 def get_agasc_cone(ra, dec, time=None, faint_lim=10.8):
-    field = agasc.get_agasc_cone(ra, dec, date=time)
+    cone_stars = agasc.get_agasc_cone(ra, dec, date=time)
     cols = ['AGASC_ID', 'MAG_ACA', 'COLOR1',
             'RA_PMCORR', 'DEC_PMCORR']
-    sub_field = field[(field['MAG_ACA'] < faint_lim)
-                      & (field['CLASS'] == 0)
-                      & (field['ASPQ1'] == 0)
-                      & (field['COLOR1'] != 0.7)][cols]
-    sub_field.sort('MAG_ACA')
-    return sub_field
+    ok_cone_stars = cone_stars[(cone_stars['MAG_ACA'] < faint_lim)
+                               & (cone_stars['CLASS'] == 0)
+                               & (cone_stars['ASPQ1'] == 0)
+                               & (cone_stars['COLOR1'] != 0.7)][cols]
+    ok_cone_stars.sort('MAG_ACA')
+    return ok_cone_stars
 
 
-def select_fov_stars(ra, dec, roll, field):
+def select_fov_stars(ra, dec, roll, cone_stars):
     edgepad = characteristics.EDGE_DIST / 5.
     q = Quat((ra, dec, roll))
-    yag, zag = radec2yagzag(field['RA_PMCORR'], field['DEC_PMCORR'], q)
+    yag, zag = radec2yagzag(cone_stars['RA_PMCORR'], cone_stars['DEC_PMCORR'], q)
     row, col = chandra_aca.yagzag_to_pixels(yag * 3600,
                                             zag * 3600, allow_bad=True)
-    in_fov = field[(row < (512 - edgepad))
-                   & (row > (-512 + edgepad))
-                   & (col < (512 - edgepad))
-                   & (col > (-512 + edgepad))]
-    return in_fov
+    stars_in_fov = cone_stars[(row < (512 - edgepad))
+                              & (row > (-512 + edgepad))
+                              & (col < (512 - edgepad))
+                              & (col > (-512 + edgepad))]
+    return stars_in_fov
 
 
 def max_temp(ra, dec, roll, time, cone_stars):
