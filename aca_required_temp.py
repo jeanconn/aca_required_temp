@@ -57,9 +57,9 @@ def get_agasc_cone(ra, dec, time=None, faint_lim=10.8):
                           & (field['ASPQ1'] == 0)
                           & (field['COLOR1'] != 0.7)
                           & (field['COLOR1'] != 1.5)][cols]
-        field.sort('MAG_ACA')
-        AGASC_CACHE["{:.8f}_{:.8f}".format(ra, dec)] = field
-    return field
+        sub_field.sort('MAG_ACA')
+        AGASC_CACHE["{:.8f}_{:.8f}".format(ra, dec)] = sub_field
+    return sub_field
 
 
 def select_fov_stars(ra, dec, roll, field):
