@@ -10,7 +10,7 @@ Star requirements
 -----------------
 Class == 0
 ASPQ1 == 0
-Color != 0.700 or 1.500
+Color != 0.700
 
 Acquisition Requirements
 ------------------------

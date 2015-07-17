@@ -44,8 +44,7 @@ def get_agasc_cone(ra, dec, time=None, faint_lim=10.8):
     sub_field = field[(field['MAG_ACA'] < faint_lim)
                       & (field['CLASS'] == 0)
                       & (field['ASPQ1'] == 0)
-                      & (field['COLOR1'] != 0.7)
-                      & (field['COLOR1'] != 1.5)][cols]
+                      & (field['COLOR1'] != 0.7)][cols]
     sub_field.sort('MAG_ACA')
     return sub_field
 
