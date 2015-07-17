@@ -9,7 +9,6 @@ from Ska.quatutil import radec2yagzag
 from Quaternion import Quat
 import chandra_aca
 from starcheck.star_probs import t_ccd_warm_limit
-import hashlib
 from astropy.table import Table
 
 ROLL_TABLE = Table.read('roll_limits.dat', format='ascii')
@@ -68,7 +67,7 @@ def max_temp(ra, dec, roll, time, cone_stars):
         return None
     # take the 8 brightest
     stars = fov_stars[0:8]
-    id_hash = hashlib.md5(stars['AGASC_ID']).hexdigest()
+    id_hash = tuple(stars['AGASC_ID'])
     if id_hash in TEMP_CACHE:
         t_ccd, n_acq = TEMP_CACHE[id_hash]
     else:
