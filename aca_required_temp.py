@@ -116,7 +116,7 @@ def best_temp_roll(ra, dec, nom_roll, day_pitch, time, cone_stars):
 def temps_for_attitude(ra, dec, start_day='2014-09-01', stop_day='2015-12-31'):
     # reset the caches at every new attitude
     global TEMP_CACHE
-    TEMP_CACHE = {}
+    TEMP_CACHE.clear()
 
     # set the agasc lookup time to be in the middle of the cycle for
     # proper motion correction
