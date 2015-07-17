@@ -28,9 +28,9 @@ def get_options():
                         type=float)
     parser.add_argument("--out",
                         default="roll_temps.dat")
-    parser.add_argument("--start-day",
+    parser.add_argument("--start",
                         default="2014-09-01")
-    parser.add_argument("--stop-day",
+    parser.add_argument("--stop",
                         default="2015-12-31")
     opt = parser.parse_args()
     return opt
@@ -113,23 +113,23 @@ def best_temp_roll(ra, dec, nom_roll, day_pitch, time, cone_stars):
     return best_t_ccd, best_roll
 
 
-def temps_for_attitude(ra, dec, start_day='2014-09-01', stop_day='2015-12-31'):
+def temps_for_attitude(ra, dec, start='2014-09-01', stop='2015-12-31'):
     # reset the caches at every new attitude
     global TEMP_CACHE
     TEMP_CACHE.clear()
 
     # set the agasc lookup time to be in the middle of the cycle for
     # proper motion correction
-    agasc_mid_time = DateTime((DateTime(start_day).secs + DateTime(stop_day).secs)
+    agasc_mid_time = DateTime((DateTime(start).secs + DateTime(stop).secs)
                               / 2).date
 
     # Get stars in this field
     cone_stars = get_agasc_cone(ra, dec, time=agasc_mid_time)
 
     # get a list of days
-    day = DateTime(start_day)
+    day = DateTime(start)
     days = []
-    while day.secs < DateTime(stop_day).secs:
+    while day.secs < DateTime(stop).secs:
         days.append(day)
         day = day + 1
 
@@ -174,8 +174,8 @@ def main():
     """
     opt = get_options()
     temp_table = temps_for_attitude(opt.ra, opt.dec,
-                                    start_day=opt.start_day,
-                                    stop_day=opt.stop_day)
+                                    start=opt.start,
+                                    stop=opt.stop)
     temp_table.write(opt.out, format='ascii.fixed_width_two_line')
 
 if __name__ == '__main__':
