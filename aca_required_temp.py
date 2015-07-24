@@ -3,7 +3,7 @@ import numpy as np
 
 import agasc
 from Chandra.Time import DateTime
-from Ska.Sun import nominal_roll, pitch
+import Ska.Sun
 from Ska.quatutil import radec2yagzag
 from Quaternion import Quat
 import chandra_aca
@@ -138,8 +138,8 @@ def temps_for_attitude(ra, dec, start='2014-09-01', stop='2015-12-31'):
     temps = {}
     # loop over them
     for day in days.date:
-        nom_roll = nominal_roll(ra, dec, time=day)
-        day_pitch = pitch(ra, dec, time=day)
+        nom_roll = Ska.Sun.nominal_roll(ra, dec, time=day)
+        day_pitch = Ska.Sun.pitch(ra, dec, time=day)
         if day_pitch < 45 or day_pitch > 170:
             continue
 
