@@ -1,7 +1,7 @@
-ACA Required Temperature
+ACA Maximum Temperature
 ------------------------
 
-For any RA, Dec we introduce the concept of an "ACA Required Temperature" which is the
+For any RA, Dec we introduce the concept of an "ACA Maximum Temperature" which is the
 maximum ACA CCD temperature at which we expect the given pointing can be acquired and
 successfully tracked.  This temperature is a function of the available stars and their
 magnitudes for a RA, Dec, and time in the ACA frame.
