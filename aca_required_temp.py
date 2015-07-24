@@ -13,7 +13,7 @@ from astropy.table import Table
 N_ACQ_STARS = 5
 EDGE_DIST = 30
 COLD_T_CCD = -21
-WARM_T_CCD = -5
+WARM_T_CCD = -10
 
 ROLL_TABLE = Table.read('roll_limits.dat', format='ascii')
 
