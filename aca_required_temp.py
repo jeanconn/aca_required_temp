@@ -44,10 +44,11 @@ def get_agasc_cone(ra, dec, time=None, faint_lim=10.8):
     cone_stars = agasc.get_agasc_cone(ra, dec, date=time)
     cols = ['AGASC_ID', 'MAG_ACA', 'COLOR1',
             'RA_PMCORR', 'DEC_PMCORR']
-    ok_cone_stars = cone_stars[(cone_stars['MAG_ACA'] < faint_lim)
-                               & (cone_stars['CLASS'] == 0)
-                               & (cone_stars['ASPQ1'] == 0)
-                               & (cone_stars['COLOR1'] != 0.7)][cols]
+    ok_cone_stars = cone_stars[
+        (cone_stars['MAG_ACA'] < faint_lim) &
+        (cone_stars['CLASS'] == 0) &
+        (cone_stars['ASPQ1'] == 0) &
+        (cone_stars['COLOR1'] != 0.7)][cols]
     ok_cone_stars.sort('MAG_ACA')
     return ok_cone_stars
 
@@ -58,10 +59,11 @@ def select_fov_stars(ra, dec, roll, cone_stars):
     yag, zag = radec2yagzag(cone_stars['RA_PMCORR'], cone_stars['DEC_PMCORR'], q)
     row, col = chandra_aca.yagzag_to_pixels(yag * 3600,
                                             zag * 3600, allow_bad=True)
-    stars_in_fov = cone_stars[(row < (512 - edgepad))
-                              & (row > (-512 + edgepad))
-                              & (col < (512 - edgepad))
-                              & (col > (-512 + edgepad))]
+    stars_in_fov = cone_stars[
+        (row < (512 - edgepad)) &
+        (row > (-512 + edgepad)) &
+        (col < (512 - edgepad)) &
+        (col > (-512 + edgepad))]
     return stars_in_fov
 
 
@@ -124,8 +126,8 @@ def temps_for_attitude(ra, dec, start='2014-09-01', stop='2015-12-31'):
 
     # set the agasc lookup time to be in the middle of the cycle for
     # proper motion correction
-    agasc_mid_time = DateTime((DateTime(start).secs + DateTime(stop).secs)
-                              / 2).date
+    agasc_mid_time = DateTime(
+        (DateTime(start).secs + DateTime(stop).secs) / 2).date
 
     # Get stars in this field
     cone_stars = get_agasc_cone(ra, dec, time=agasc_mid_time)
@@ -169,6 +171,7 @@ def temps_for_attitude(ra, dec, start='2014-09-01', stop='2015-12-31'):
 
     table.sort('day')
     return table
+
 
 def main():
     """
