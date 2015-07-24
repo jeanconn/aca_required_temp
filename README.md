@@ -19,8 +19,3 @@ N Stars == 5
 -15C Mag Limit == 10.0
 At least 30 arcsecs from FOV chip edge
 
-Guide Requirements
-------------------
-
-N Stars == 4
-Same as acquisition but also not brighter than 5.8 mags
