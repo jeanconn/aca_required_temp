@@ -67,8 +67,6 @@ def select_stars(ra, dec, roll, cone_stars):
 
 def max_temp(ra, dec, roll, time, cone_stars):
     stars = select_stars(ra, dec, roll, cone_stars)
-    if not len(stars):
-        return None
     id_hash = tuple(stars['AGASC_ID'])
     if id_hash in TEMP_CACHE:
         t_ccd, n_acq = TEMP_CACHE[id_hash]
@@ -90,29 +88,30 @@ def get_rolldev(pitch):
     return ROLL_TABLE['rolldev'][idx - 1]
 
 
-def best_temp_roll(ra, dec, nom_roll, day_pitch, time, cone_stars):
+def get_t_ccd_roll(ra, dec, pitch, time, cone_stars):
     """
-    Loop over possible roll range for this pitch and return best temp/roll
-    combination
+    Loop over possible roll range for this pitch and return best
+    and nominal temperature/roll combinations
     """
-    best_t_ccd = None
     best_roll = None
-    rolldev = get_rolldev(day_pitch)
-    # Quat doesn't care about the domain of roll, so I don't have to
-    # do anything tricky with 180/360 etc
-    for rolldiff in np.arange(0, rolldev, step=.5):
-        # Walk out from nom_roll instead of just through the range,
-        # and quit if we get one that is at the warm limit
-        # That will give us the closest-to-nominal best choice
-        for roll in [nom_roll - rolldiff, nom_roll + rolldiff]:
-            roll_t_ccd = max_temp(ra, dec, roll, time=time, cone_stars=cone_stars)
-            if roll_t_ccd is not None:
-                if best_t_ccd is None or roll_t_ccd > best_t_ccd:
-                    best_t_ccd = roll_t_ccd
-                    best_roll = roll
-                if best_t_ccd == WARM_T_CCD:
-                    break
-    return best_t_ccd, best_roll
+    best_t_ccd = None
+    nom_roll = Ska.Sun.nominal_roll(ra, dec, time=time)
+    nom_t_ccd = max_temp(ra, dec, nom_roll, time=time, cone_stars=cone_stars)
+    # check off nominal rolls in allowed range for a better catalog / temperature
+    roll_dev = get_rolldev(pitch)
+    d_roll = 1.0
+    plus_minus_rolls = np.concatenate([[-r, r] for r in
+                                       np.arange(d_roll, roll_dev, d_roll)])
+    off_nom_rolls = nom_roll + plus_minus_rolls
+    for roll in off_nom_rolls:
+        roll_t_ccd = max_temp(ra, dec, roll, time=time, cone_stars=cone_stars)
+        if roll_t_ccd is not None:
+            if best_t_ccd is None or roll_t_ccd > best_t_ccd:
+                best_t_ccd = roll_t_ccd
+                best_roll = roll
+            if best_t_ccd == WARM_T_CCD:
+                break
+    return nom_t_ccd, nom_roll, best_t_ccd, best_roll
 
 
 def temps_for_attitude(ra, dec, start='2014-09-01', stop='2015-12-31'):
@@ -136,33 +135,20 @@ def temps_for_attitude(ra, dec, start='2014-09-01', stop='2015-12-31'):
     temps = {}
     # loop over them
     for day in days.date:
-        nom_roll = Ska.Sun.nominal_roll(ra, dec, time=day)
         day_pitch = Ska.Sun.pitch(ra, dec, time=day)
-            continue
-
-        nom_roll_t_ccd = max_temp(ra, dec, nom_roll, time=day, cone_stars=cone_stars)
-        # if we can get the nominal roll catalog at warmest temp, why check the rest?
-        if nom_roll_t_ccd == WARM_T_CCD:
-            best_t_ccd = nom_roll_t_ccd
-            best_roll = nom_roll
-        else:
-            best_t_ccd, best_roll = best_temp_roll(ra, dec, nom_roll,
-                                                   day_pitch,
-                                                   time=day,
-                                                   cone_stars=cone_stars)
-        # should we have values or skip entries for None here?
-        if best_t_ccd is None:
         if day_pitch < 46.4 or day_pitch > 170:
             continue
+        nom_t_ccd, nom_roll, best_t_ccd, best_roll = get_t_ccd_roll(
+            ra, dec, day_pitch, time=day, cone_stars=cone_stars)
         temps["{}".format(day[0:8])] = {
             'day': day,
             'pitch': "{:.2f}".format(day_pitch),
             'nom_roll': "{:.2f}".format(nom_roll),
-            'nom_roll_t_ccd': "{:.2f}".format(nom_roll_t_ccd),
+            'nom_t_ccd': "{:.2f}".format(nom_t_ccd),
             'best_roll': "{:.2f}".format(best_roll),
             'best_t_ccd': "{:.2f}".format(best_t_ccd)}
     table = Table(temps.values())['day', 'pitch',
-                                  'nom_roll', 'nom_roll_t_ccd',
+                                  'nom_roll', 'nom_t_ccd',
                                   'best_roll', 'best_t_ccd']
 
     table.sort('day')
