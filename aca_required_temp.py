@@ -82,8 +82,6 @@ def max_temp(ra, dec, roll, time, cone_stars):
 
 
 def get_rolldev(pitch):
-    if pitch < ROLL_TABLE['pitch'][0]:
-        return 0
     idx = np.searchsorted(ROLL_TABLE['pitch'], pitch)
     return ROLL_TABLE['rolldev'][idx - 1]
 
