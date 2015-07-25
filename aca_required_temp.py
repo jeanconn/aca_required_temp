@@ -138,7 +138,6 @@ def temps_for_attitude(ra, dec, start='2014-09-01', stop='2015-12-31'):
     for day in days.date:
         nom_roll = Ska.Sun.nominal_roll(ra, dec, time=day)
         day_pitch = Ska.Sun.pitch(ra, dec, time=day)
-        if day_pitch < 45 or day_pitch > 170:
             continue
 
         nom_roll_t_ccd = max_temp(ra, dec, nom_roll, time=day, cone_stars=cone_stars)
@@ -153,6 +152,7 @@ def temps_for_attitude(ra, dec, start='2014-09-01', stop='2015-12-31'):
                                                    cone_stars=cone_stars)
         # should we have values or skip entries for None here?
         if best_t_ccd is None:
+        if day_pitch < 46.4 or day_pitch > 170:
             continue
         temps["{}".format(day[0:8])] = {
             'day': day,
