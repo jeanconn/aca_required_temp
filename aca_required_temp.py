@@ -19,7 +19,7 @@ ROLL_TABLE = Table.read('roll_limits.dat', format='ascii')
 
 # Save temperature calc a combination of stars
 # indexed by hash of agasc ids
-TEMP_CACHE = {}
+T_CCD_CACHE = {}
 
 
 def get_options():
@@ -68,17 +68,16 @@ def select_stars(ra, dec, roll, cone_stars):
 def max_temp(ra, dec, roll, time, cone_stars):
     stars = select_stars(ra, dec, roll, cone_stars)
     id_hash = tuple(stars['AGASC_ID'])
-    if id_hash in TEMP_CACHE:
-        t_ccd, n_acq = TEMP_CACHE[id_hash]
-    else:
-        t_ccd, n_acq = t_ccd_warm_limit(date=time,
-                                        mags=stars['MAG_ACA'],
-                                        colors=stars['COLOR1'],
-                                        min_n_acq=N_ACQ_STARS,
-                                        cold_t_ccd=COLD_T_CCD,
-                                        warm_t_ccd=WARM_T_CCD)
-        TEMP_CACHE[id_hash] = (t_ccd, n_acq)
-    return t_ccd
+    if id_hash not in T_CCD_CACHE:
+        # Get tuple of (t_ccd, n_acq) for this star field and cache
+        T_CCD_CACHE[id_hash] = t_ccd_warm_limit(
+            date=time,
+            mags=stars['MAG_ACA'],
+            colors=stars['COLOR1'],
+            min_n_acq=N_ACQ_STARS,
+            cold_t_ccd=COLD_T_CCD,
+            warm_t_ccd=WARM_T_CCD)
+    return T_CCD_CACHE[id_hash]
 
 
 def get_rolldev(pitch):
@@ -94,7 +93,7 @@ def get_t_ccd_roll(ra, dec, pitch, time, cone_stars):
     best_roll = None
     best_t_ccd = None
     nom_roll = Ska.Sun.nominal_roll(ra, dec, time=time)
-    nom_t_ccd = max_temp(ra, dec, nom_roll, time=time, cone_stars=cone_stars)
+    nom_t_ccd, nom_n_acq = max_temp(ra, dec, nom_roll, time=time, cone_stars=cone_stars)
     # check off nominal rolls in allowed range for a better catalog / temperature
     roll_dev = get_rolldev(pitch)
     d_roll = 1.0
@@ -102,7 +101,7 @@ def get_t_ccd_roll(ra, dec, pitch, time, cone_stars):
                                        np.arange(d_roll, roll_dev, d_roll)])
     off_nom_rolls = nom_roll + plus_minus_rolls
     for roll in off_nom_rolls:
-        roll_t_ccd = max_temp(ra, dec, roll, time=time, cone_stars=cone_stars)
+        roll_t_ccd, roll_n_acq = max_temp(ra, dec, roll, time=time, cone_stars=cone_stars)
         if roll_t_ccd is not None:
             if best_t_ccd is None or roll_t_ccd > best_t_ccd:
                 best_t_ccd = roll_t_ccd
@@ -114,8 +113,8 @@ def get_t_ccd_roll(ra, dec, pitch, time, cone_stars):
 
 def temps_for_attitude(ra, dec, start='2014-09-01', stop='2015-12-31'):
     # reset the caches at every new attitude
-    global TEMP_CACHE
-    TEMP_CACHE.clear()
+    global T_CCD_CACHE
+    T_CCD_CACHE.clear()
 
     # set the agasc lookup time to be in the middle of the cycle for
     # proper motion correction
