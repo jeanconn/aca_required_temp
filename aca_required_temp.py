@@ -116,17 +116,18 @@ def temps_for_attitude(ra, dec, start='2014-09-01', stop='2015-12-31'):
     global T_CCD_CACHE
     T_CCD_CACHE.clear()
 
-    # set the agasc lookup time to be in the middle of the cycle for
-    # proper motion correction
-    agasc_mid_time = DateTime(
-        (DateTime(start).secs + DateTime(stop).secs) / 2).date
 
-    # Get stars in this field
-    cone_stars = agasc.get_agasc_cone(ra, dec, date=agasc_mid_time)
-
-    # get a list of days
     start = DateTime(start)
     stop = DateTime(stop)
+
+    # set the agasc proper motion time to be in the middle of the
+    # requested cycle
+    lts_mid_time = start + (stop - start) / 2
+
+    # Get stars in this field
+    cone_stars = agasc.get_agasc_cone(ra, dec, date=lts_mid_time)
+
+    # get a list of days
     days = start + np.arange(stop - start)
 
     temps = {}
