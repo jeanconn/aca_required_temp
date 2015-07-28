@@ -111,7 +111,7 @@ def get_t_ccd_roll(ra, dec, pitch, time, cone_stars):
     return nom_t_ccd, nom_roll, best_t_ccd, best_roll
 
 
-def temps_for_attitude(ra, dec, start='2014-09-01', stop='2015-12-31'):
+def t_ccd_for_attitude(ra, dec, start='2014-09-01', stop='2015-12-31'):
     # reset the caches at every new attitude
     global T_CCD_CACHE
     T_CCD_CACHE.clear()
