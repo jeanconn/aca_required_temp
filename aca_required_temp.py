@@ -140,17 +140,22 @@ def t_ccd_for_attitude(ra, dec, start='2014-09-01', stop='2015-12-31'):
             ra, dec, day_pitch, time=day, cone_stars=cone_stars)
         temps["{}".format(day[0:8])] = {
             'day': day,
-            'pitch': "{:.2f}".format(day_pitch),
-            'nom_roll': "{:.2f}".format(nom_roll),
-            'nom_t_ccd': "{:.2f}".format(nom_t_ccd),
-            'best_roll': "{:.2f}".format(best_roll),
-            'best_t_ccd': "{:.2f}".format(best_t_ccd)}
-    table = Table(temps.values())['day', 'pitch',
-                                  'nom_roll', 'nom_t_ccd',
-                                  'best_roll', 'best_t_ccd']
+            'pitch': day_pitch,
+            'nom_roll': nom_roll,
+            'nom_t_ccd': nom_t_ccd,
+            'best_roll': best_roll,
+            'best_t_ccd': best_t_ccd}
 
-    table.sort('day')
-    return table
+    t_ccd_table = Table(temps.values())['day', 'pitch',
+                                        'nom_roll', 'nom_t_ccd',
+                                        'best_roll', 'best_t_ccd']
+    t_ccd_table['pitch'].format = '.2f'
+    t_ccd_table['nom_roll'].format = '.2f'
+    t_ccd_table['nom_t_ccd'].format = '.2f'
+    t_ccd_table['best_roll'].format = '.2f'
+    t_ccd_table['best_t_ccd'].format = '.2f'
+    t_ccd_table.sort('day')
+    return t_ccd_table
 
 
 def main():
