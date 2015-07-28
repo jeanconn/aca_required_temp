@@ -1,7 +1,15 @@
-
+import os
 import numpy as np
-
 import agasc
+import jinja2
+import re
+import shutil
+import matplotlib
+if __name__ == '__main__':
+    matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+from Ska.Matplotlib import plot_cxctime
+
 from Chandra.Time import DateTime
 import Ska.Sun
 from Ska.quatutil import radec2yagzag
@@ -31,11 +39,12 @@ def get_options():
     parser.add_argument("dec",
                         type=float)
     parser.add_argument("--out",
-                        default="roll_temps.dat")
+                        default="out")
     parser.add_argument("--start",
                         default="2014-09-01")
     parser.add_argument("--stop",
                         default="2015-12-31")
+    parser.add_argument("--obsid")
     opt = parser.parse_args()
     return opt
 
@@ -158,15 +167,99 @@ def t_ccd_for_attitude(ra, dec, start='2014-09-01', stop='2015-12-31'):
     return t_ccd_table
 
 
+def plot_time_table(t_ccd_table):
+    fig = plt.figure(figsize=(5, 4))
+    plot_cxctime(DateTime(t_ccd_table['day']).secs,
+                 t_ccd_table['nom_t_ccd'],
+                 'r',
+                 label='nom roll t ccd')
+    plot_cxctime(DateTime(t_ccd_table['day']).secs,
+                 t_ccd_table['best_t_ccd'],
+                 'b',
+                 label='best roll t ccd')
+    plt.grid()
+    plt.margins(y=.10)
+    plt.legend(loc='upper left')
+    plt.ylabel('Max ACA CCD Temp (degC)')
+    plt.tight_layout()
+    return fig
+
+
+def plot_hist_table(t_ccd_table):
+    fig = plt.figure(figsize=(5, 4))
+    bins = np.arange(COLD_T_CCD,
+                     WARM_T_CCD + 2.0,
+                     1.0)
+    plt.hist(t_ccd_table['nom_t_ccd'], bins=bins, color='r', alpha=.5,
+             label='nom roll t ccd')
+    plt.hist(t_ccd_table['best_t_ccd'], bins=bins, color='b', alpha=.5,
+             label='best roll t ccd')
+    plt.margins(y=.10)
+    plt.legend(loc='upper left')
+    plt.xlabel('Max ACA CCD Temp (degC)')
+    plt.tight_layout()
+    return fig
+
+
+def make_target_report(ra, dec, start, stop, obsdir, obsid=None):
+    t_ccd_table = t_ccd_for_attitude(ra, dec,
+                                     start=start,
+                                     stop=stop)
+    t_ccd_table.write(os.path.join(obsdir, 't_ccd_roll.dat'),
+                      format='ascii.fixed_width_two_line')
+    tfig = plot_time_table(t_ccd_table)
+    tfig.savefig(os.path.join(obsdir,
+                              'temperatures_over_cycle.png'))
+    plt.close(tfig)
+    hfig = plot_hist_table(t_ccd_table)
+    hfig.savefig(os.path.join(obsdir,
+                              'temperature_hist.png'))
+    plt.close(hfig)
+
+    #jinja_env = jinja2.Environment(
+    #    loader=jinja2.FileSystemLoader(
+    #        os.path.join(os.environ['SKA'], 'data', 'mica', 'templates')))
+    html_table = t_ccd_table.pformat(html=True, max_width=-1, max_lines=-1)
+    # customize table for sorttable
+    html_table[0] = '<table class="sortable" border cellpadding=5>'
+    # put the sort indicator right in the table so the user sees that the
+    # table is sortable
+    html_table[1] = re.sub('<th>day</th>',
+                           '<th>day<span id="sorttable_sortfwdind">&nbsp;&#9662;</span></th>',
+                           html_table[1])
+    shutil.copy('sorttable.js', obsdir)
+
+    jinja_env = jinja2.Environment(
+        loader=jinja2.FileSystemLoader('templates'))
+    jinja_env.line_comment_prefix = '##'
+    jinja_env.line_statement_prefix = '#'
+    template = jinja_env.get_template('target.html')
+    page = template.render(time_plot='temperatures_over_cycle.png',
+                           hist_plot='temperature_hist.png',
+                           table="\n".join(html_table),
+                           obsid=obsid,
+                           ra=ra,
+                           dec=dec,
+                           start=start.date,
+                           stop=stop.date,
+                           warm_limit=WARM_T_CCD)
+    f = open(os.path.join(obsdir, 'index.html'), 'w')
+    f.write(page)
+    f.close()
+    return t_ccd_table
+
 def main():
     """
     Determine required ACA temperature for an attitude over a time range
     """
     opt = get_options()
-    temp_table = temps_for_attitude(opt.ra, opt.dec,
-                                    start=opt.start,
-                                    stop=opt.stop)
-    temp_table.write(opt.out, format='ascii.fixed_width_two_line')
+    make_target_report(opt.ra, opt.dec,
+                       start=opt.start,
+                       stop=opt.stop,
+                       obsdir=opt.out,
+                       obsid=opt.obsid,
+                       )
+
 
 if __name__ == '__main__':
     main()
