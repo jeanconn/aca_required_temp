@@ -1,0 +1,43 @@
+<HTML>
+<HEAD>
+{% if obsid is not none %}
+<TITLE>Obsid {{ obsid }}</TITLE>
+{% else %}
+<TITLE>RA, Dec: {{ ra }}, {{ dec }}</TITLE>
+{% endif %}
+<script type='text/javascript' src='sorttable.js'></script>
+</HEAD>
+<BODY>
+
+{% if obsid is not none %}
+<H1>Obsid {{ obsid }}</H1>
+{% else %}
+<H1>RA, Dec: {{ ra }}, {{ dec }}</H1>
+{% endif %}
+
+<DL>
+<DT>RA, Dec</DT><DD>{{ ra }}, {{ dec }}</DD>
+<DT>Start Time</DT><DD>{{ start }}</DD>
+<DT>Stop Time</DT><DD>{{ stop }}</DD>
+</DL>
+
+<TABLE>
+<TR>
+<TD>
+<P>Distribution of maximum possible CCD temperature at nominal and "best allowed" roll
+over the calculated time range.</P>
+<IMG SRC="{{ hist_plot }}">
+</TD>
+<TD>
+<P>Maximum possible CCD temperature at nominal and "best allowed" roll
+over the calculated time range.  This has only been calculated up to {{ warm_limit }}
+so that is the the "best" value an attitude can have.</P>
+<IMG SRC="{{ time_plot }}">
+</TD>
+</TR>
+</TABLE>
+
+{{ table }}
+
+</BODY>
+</HTML>
