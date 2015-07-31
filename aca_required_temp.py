@@ -179,7 +179,7 @@ def plot_time_table(t_ccd_table):
                  label='best roll t ccd')
     plt.grid()
     plt.margins(y=.10)
-    plt.legend(loc='upper left')
+    plt.legend(loc='upper left', fontsize='small')
     plt.ylabel('Max ACA CCD Temp (degC)')
     plt.tight_layout()
     return fig
@@ -195,7 +195,7 @@ def plot_hist_table(t_ccd_table):
     plt.hist(t_ccd_table['best_t_ccd'], bins=bins, color='b', alpha=.5,
              label='best roll t ccd')
     plt.margins(y=.10)
-    plt.legend(loc='upper left')
+    plt.legend(loc='upper left', fontsize='small')
     plt.xlabel('Max ACA CCD Temp (degC)')
     plt.tight_layout()
     return fig
