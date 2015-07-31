@@ -201,12 +201,16 @@ def plot_hist_table(t_ccd_table):
     return fig
 
 
-def make_target_report(ra, dec, start, stop, obsdir, obsid=None):
-    t_ccd_table = t_ccd_for_attitude(ra, dec,
-                                     start=start,
-                                     stop=stop)
-    t_ccd_table.write(os.path.join(obsdir, 't_ccd_roll.dat'),
-                      format='ascii.fixed_width_two_line')
+def make_target_report(ra, dec, start, stop, obsdir, obsid=None, redo=True):
+    table_file = os.path.join(obsdir, 't_ccd_roll.dat')
+    if not redo and os.path.exists(table_file):
+        t_ccd_table = Table.read(table_file, format='ascii.fixed_width_two_line')
+    else:
+        t_ccd_table = t_ccd_for_attitude(ra, dec,
+                                         start=start,
+                                         stop=stop)
+        t_ccd_table.write(table_file,
+                          format='ascii.fixed_width_two_line')
     tfig = plot_time_table(t_ccd_table)
     tfig.savefig(os.path.join(obsdir,
                               'temperatures_over_cycle.png'))
