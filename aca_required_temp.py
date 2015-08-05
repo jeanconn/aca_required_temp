@@ -148,7 +148,7 @@ def t_ccd_for_attitude(ra, dec, start='2014-09-01', stop='2015-12-31'):
         nom_t_ccd, nom_roll, best_t_ccd, best_roll = get_t_ccd_roll(
             ra, dec, day_pitch, time=day, cone_stars=cone_stars)
         temps["{}".format(day[0:8])] = {
-            'day': day,
+            'day': day[0:8],
             'caldate': DateTime(day).caldate[4:9],
             'pitch': day_pitch,
             'nom_roll': nom_roll,
