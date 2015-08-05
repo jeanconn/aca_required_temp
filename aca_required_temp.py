@@ -178,7 +178,7 @@ def plot_time_table(t_ccd_table):
                  'b',
                  label='best roll t ccd')
     plt.grid()
-    plt.margins(y=.10)
+    plt.ylim(ymin=COLD_T_CCD, ymax=WARM_T_CCD + 3.0)
     plt.legend(loc='upper left', fontsize='small')
     plt.ylabel('Max ACA CCD Temp (degC)')
     plt.tight_layout()
