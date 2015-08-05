@@ -149,13 +149,14 @@ def t_ccd_for_attitude(ra, dec, start='2014-09-01', stop='2015-12-31'):
             ra, dec, day_pitch, time=day, cone_stars=cone_stars)
         temps["{}".format(day[0:8])] = {
             'day': day,
+            'caldate': DateTime(day).caldate[4:9],
             'pitch': day_pitch,
             'nom_roll': nom_roll,
             'nom_t_ccd': nom_t_ccd,
             'best_roll': best_roll,
             'best_t_ccd': best_t_ccd}
 
-    t_ccd_table = Table(temps.values())['day', 'pitch',
+    t_ccd_table = Table(temps.values())['day', 'caldate', 'pitch',
                                         'nom_roll', 'nom_t_ccd',
                                         'best_roll', 'best_t_ccd']
     t_ccd_table['pitch'].format = '.2f'
