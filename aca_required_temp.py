@@ -144,6 +144,14 @@ def t_ccd_for_attitude(ra, dec, start='2014-09-01', stop='2015-12-31'):
     for day in days.date:
         day_pitch = Ska.Sun.pitch(ra, dec, time=day)
         if day_pitch < 46.4 or day_pitch > 170:
+            temps["{}".format(day[0:8])] = {
+                'day': day[0:8],
+                'caldate': DateTime(day).caldate[4:9],
+                'pitch': day_pitch,
+                'nom_roll': np.nan,
+                'nom_t_ccd': np.nan,
+                'best_roll': np.nan,
+                'best_t_ccd': np.nan}
             continue
         nom_t_ccd, nom_roll, best_t_ccd, best_roll = get_t_ccd_roll(
             ra, dec, day_pitch, time=day, cone_stars=cone_stars)
@@ -224,7 +232,8 @@ def make_target_report(ra, dec, start, stop, obsdir, obsid=None, redo=True):
     #jinja_env = jinja2.Environment(
     #    loader=jinja2.FileSystemLoader(
     #        os.path.join(os.environ['SKA'], 'data', 'mica', 'templates')))
-    html_table = t_ccd_table.pformat(html=True, max_width=-1, max_lines=-1)
+    masked_table = t_ccd_table[~np.isnan(t_ccd_table['nom_t_ccd'])]
+    html_table = masked_table.pformat(html=True, max_width=-1, max_lines=-1)
     # customize table for sorttable
     html_table[0] = '<table class="sortable" border cellpadding=5>'
     # put the sort indicator right in the table so the user sees that the
