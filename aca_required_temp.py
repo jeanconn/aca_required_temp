@@ -8,6 +8,8 @@ import matplotlib
 if __name__ == '__main__':
     matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+import mpld3
+
 from Ska.Matplotlib import plot_cxctime, cxctime2plotdate
 
 from Chandra.Time import DateTime
@@ -177,23 +179,29 @@ def t_ccd_for_attitude(ra, dec, start='2014-09-01', stop='2015-12-31'):
 
 
 def plot_time_table(t_ccd_table):
-    fig = plt.figure(figsize=(5, 4))
+    fig = plt.figure(figsize=(6, 5))
     day_secs = DateTime(t_ccd_table['day']).secs
     nom_t_ccd = t_ccd_table['nom_t_ccd']
     best_t_ccd = t_ccd_table['best_t_ccd']
     plot_cxctime(day_secs,
                  nom_t_ccd,
-                 'r',
+                 'r')
+    plot_cxctime(day_secs,
+                 best_t_ccd,
+                 'b')
+    plot_cxctime(day_secs,
+                 nom_t_ccd,
+                 'r.',
                  label='nom roll t ccd')
     plot_cxctime(day_secs,
                  best_t_ccd,
-                 'b',
+                 'b.',
                  label='best roll t ccd')
     plt.grid()
     plt.ylim(ymin=COLD_T_CCD, ymax=WARM_T_CCD + 3.0)
     plt.xlim(xmin=cxctime2plotdate([day_secs[0]]),
              xmax=cxctime2plotdate([day_secs[-1]]))
-    plt.legend(loc='upper left', fontsize='small')
+    plt.legend(loc='upper left', title="", numpoints=1, handlelength=.5)
     plt.ylabel('Max ACA CCD Temp (degC)')
     plt.tight_layout()
     return fig
@@ -226,9 +234,7 @@ def make_target_report(ra, dec, start, stop, obsdir, obsid=None, redo=True):
         t_ccd_table.write(table_file,
                           format='ascii.fixed_width_two_line')
     tfig = plot_time_table(t_ccd_table)
-    tfig.savefig(os.path.join(obsdir,
-                              'temperatures_over_cycle.png'))
-    plt.close(tfig)
+    tfig_html = mpld3.fig_to_html(tfig)
     hfig = plot_hist_table(t_ccd_table)
     hfig.savefig(os.path.join(obsdir,
                               'temperature_hist.png'))
@@ -253,7 +259,7 @@ def make_target_report(ra, dec, start, stop, obsdir, obsid=None, redo=True):
     jinja_env.line_comment_prefix = '##'
     jinja_env.line_statement_prefix = '#'
     template = jinja_env.get_template('target.html')
-    page = template.render(time_plot='temperatures_over_cycle.png',
+    page = template.render(time_plot=tfig_html,
                            hist_plot='temperature_hist.png',
                            table="\n".join(html_table),
                            obsid=obsid,
