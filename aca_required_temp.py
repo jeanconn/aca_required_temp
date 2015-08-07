@@ -247,6 +247,9 @@ def make_target_report(ra, dec, start, stop, obsdir, obsid=None, redo=True):
     html_table = masked_table.pformat(html=True, max_width=-1, max_lines=-1)
     # customize table for sorttable
     html_table[0] = '<table class="sortable" border cellpadding=5>'
+    html_table[1] = re.sub('<th>caldate</th>',
+                           '<th class="sorttable_nosort">caldate</th>',
+                           html_table[1])
     shutil.copy('sorttable.js', obsdir)
 
     jinja_env = jinja2.Environment(
