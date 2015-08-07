@@ -8,7 +8,7 @@ import matplotlib
 if __name__ == '__main__':
     matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-from Ska.Matplotlib import plot_cxctime
+from Ska.Matplotlib import plot_cxctime, cxctime2plotdate
 
 from Chandra.Time import DateTime
 import Ska.Sun
@@ -178,16 +178,21 @@ def t_ccd_for_attitude(ra, dec, start='2014-09-01', stop='2015-12-31'):
 
 def plot_time_table(t_ccd_table):
     fig = plt.figure(figsize=(5, 4))
-    plot_cxctime(DateTime(t_ccd_table['day']).secs,
-                 t_ccd_table['nom_t_ccd'],
+    day_secs = DateTime(t_ccd_table['day']).secs
+    nom_t_ccd = t_ccd_table['nom_t_ccd']
+    best_t_ccd = t_ccd_table['best_t_ccd']
+    plot_cxctime(day_secs,
+                 nom_t_ccd,
                  'r',
                  label='nom roll t ccd')
-    plot_cxctime(DateTime(t_ccd_table['day']).secs,
-                 t_ccd_table['best_t_ccd'],
+    plot_cxctime(day_secs,
+                 best_t_ccd,
                  'b',
                  label='best roll t ccd')
     plt.grid()
     plt.ylim(ymin=COLD_T_CCD, ymax=WARM_T_CCD + 3.0)
+    plt.xlim(xmin=cxctime2plotdate([day_secs[0]]),
+             xmax=cxctime2plotdate([day_secs[-1]]))
     plt.legend(loc='upper left', fontsize='small')
     plt.ylabel('Max ACA CCD Temp (degC)')
     plt.tight_layout()
