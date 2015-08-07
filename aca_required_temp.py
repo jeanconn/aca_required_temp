@@ -247,11 +247,6 @@ def make_target_report(ra, dec, start, stop, obsdir, obsid=None, redo=True):
     html_table = masked_table.pformat(html=True, max_width=-1, max_lines=-1)
     # customize table for sorttable
     html_table[0] = '<table class="sortable" border cellpadding=5>'
-    # put the sort indicator right in the table so the user sees that the
-    # table is sortable
-    html_table[1] = re.sub('<th>day</th>',
-                           '<th>day<span id="sorttable_sortfwdind">&nbsp;&#9662;</span></th>',
-                           html_table[1])
     shutil.copy('sorttable.js', obsdir)
 
     jinja_env = jinja2.Environment(
