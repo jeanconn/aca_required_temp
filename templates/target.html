@@ -43,7 +43,21 @@ so that is the the "best" value an attitude can have.</P>
 </TR>
 </TABLE>
 
-{{ table }}
+<table class="sortable" border cellpadding=5>
+<thead><tr>{% for col in table.colnames %}<th>{{ col }}</th>{% endfor %}</tr></thead>
+{% for row in table %}<tr>
+{% for col in table.colnames -%}
+{% if col == 'nom_t_ccd' -%}
+<td><a href='{{"%s"|format(row['nom_id_hash'])}}.html'>{{"%5.2f"|format(row['nom_t_ccd'])}}</a></td>
+{% elif col == 'best_t_ccd' -%}
+<td><a href='{{"%s"|format(row['best_id_hash'])}}.html'>{{"%5.2f"|format(row['best_t_ccd'])}}</a></td>
+{% else -%}
+<td>{{formats[col]|format(row[col])}}</td>
+{% endif -%}
+{% endfor %}</tr>
+{% endfor %}
+</table>
+
 
 </BODY>
 </HTML>

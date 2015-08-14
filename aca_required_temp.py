@@ -4,6 +4,7 @@ import agasc
 import jinja2
 import re
 import shutil
+import hashlib
 import matplotlib
 if __name__ == '__main__':
     matplotlib.use('Agg')
@@ -54,7 +55,7 @@ def get_options():
 def select_stars(ra, dec, roll, cone_stars):
 
     cols = ['AGASC_ID', 'MAG_ACA', 'COLOR1',
-            'RA_PMCORR', 'DEC_PMCORR']
+            'RA_PMCORR', 'DEC_PMCORR', 'ASPQ1', 'ASPQ2', 'ASPQ3', 'VAR']
     ok_cone_stars = cone_stars[
         (cone_stars['MAG_ACA'] < 10.8) &
         (cone_stars['CLASS'] == 0) &
@@ -73,12 +74,15 @@ def select_stars(ra, dec, roll, cone_stars):
         (col < (512 - edgepad)) &
         (col > (-512 + edgepad))]
 
+    stars_in_fov['MAG_ACA'].format = '.2f'
+    stars_in_fov['COLOR1'].format = '.3f'
+    stars_in_fov['RA_PMCORR'].format = '.3f'
+    stars_in_fov['DEC_PMCORR'].format = '.3f'
     return stars_in_fov[0:8]
 
 
-def max_temp(ra, dec, roll, time, cone_stars):
-    stars = select_stars(ra, dec, roll, cone_stars)
-    id_hash = tuple(stars['AGASC_ID'])
+def max_temp(ra, dec, roll, time, stars):
+    id_hash = hashlib.md5(np.sort(stars['AGASC_ID'])).hexdigest()
     if id_hash not in T_CCD_CACHE:
         # Get tuple of (t_ccd, n_acq) for this star field and cache
         T_CCD_CACHE[id_hash] = t_ccd_warm_limit(
@@ -103,8 +107,11 @@ def get_t_ccd_roll(ra, dec, pitch, time, cone_stars):
     """
     best_roll = None
     best_t_ccd = None
+    best_stars = None
+    best_n_acq = None
     nom_roll = Ska.Sun.nominal_roll(ra, dec, time=time)
-    nom_t_ccd, nom_n_acq = max_temp(ra, dec, nom_roll, time=time, cone_stars=cone_stars)
+    nom_stars = select_stars(ra, dec, nom_roll, cone_stars)
+    nom_t_ccd, nom_n_acq = max_temp(ra, dec, nom_roll, time=time, stars=nom_stars)
     # check off nominal rolls in allowed range for a better catalog / temperature
     roll_dev = get_rolldev(pitch)
     d_roll = 1.0
@@ -112,17 +119,20 @@ def get_t_ccd_roll(ra, dec, pitch, time, cone_stars):
                                        np.arange(d_roll, roll_dev, d_roll)])
     off_nom_rolls = nom_roll + plus_minus_rolls
     for roll in off_nom_rolls:
-        roll_t_ccd, roll_n_acq = max_temp(ra, dec, roll, time=time, cone_stars=cone_stars)
+        roll_stars = select_stars(ra, dec, roll, cone_stars)
+        roll_t_ccd, roll_n_acq = max_temp(ra, dec, roll, time=time, stars=roll_stars)
         if roll_t_ccd is not None:
             if best_t_ccd is None or roll_t_ccd > best_t_ccd:
                 best_t_ccd = roll_t_ccd
                 best_roll = roll
+                best_stars = roll_stars
+                best_n_acq = roll_n_acq
             if best_t_ccd == WARM_T_CCD:
                 break
-    return nom_t_ccd, nom_roll, best_t_ccd, best_roll
+    return nom_t_ccd, nom_roll, nom_n_acq, nom_stars, best_t_ccd, best_roll, best_n_acq, best_stars
 
 
-def t_ccd_for_attitude(ra, dec, start='2014-09-01', stop='2015-12-31'):
+def t_ccd_for_attitude(ra, dec, start='2014-09-01', stop='2015-12-31', outdir=None):
     # reset the caches at every new attitude
     global T_CCD_CACHE
     T_CCD_CACHE.clear()
@@ -152,28 +162,40 @@ def t_ccd_for_attitude(ra, dec, start='2014-09-01', stop='2015-12-31'):
                 'pitch': day_pitch,
                 'nom_roll': np.nan,
                 'nom_t_ccd': np.nan,
+                'nom_n_acq': np.nan,
                 'best_roll': np.nan,
-                'best_t_ccd': np.nan}
+                'best_t_ccd': np.nan,
+                'best_n_acq': np.nan,
+                'nom_id_hash': '',
+                'best_id_hash': ''}
             continue
-        nom_t_ccd, nom_roll, best_t_ccd, best_roll = get_t_ccd_roll(
-            ra, dec, day_pitch, time=day, cone_stars=cone_stars)
+        nom_t_ccd, nom_roll, nom_n_acq, nom_stars, best_t_ccd, best_roll, best_n_acq, best_stars = get_t_ccd_roll(ra, dec, day_pitch, time=day, cone_stars=cone_stars)
+        nom_id_hash = hashlib.md5(np.sort(nom_stars['AGASC_ID'])).hexdigest()
+        best_id_hash = hashlib.md5(np.sort(best_stars['AGASC_ID'])).hexdigest()
+        if not os.path.exists(os.path.join(outdir, "{}.html".format(nom_id_hash))):
+            nom_stars.write(os.path.join(outdir, "{}.html".format(nom_id_hash)),
+                            format="jsviewer")
+        if not os.path.exists(os.path.join(outdir, "{}.html".format(best_id_hash))):
+            best_stars.write(os.path.join(outdir, "{}.html".format(best_id_hash)),
+                            format="jsviewer")
         temps["{}".format(day[0:8])] = {
             'day': day[0:8],
             'caldate': DateTime(day).caldate[4:9],
             'pitch': day_pitch,
             'nom_roll': nom_roll,
             'nom_t_ccd': nom_t_ccd,
+            'nom_n_acq': nom_n_acq,
             'best_roll': best_roll,
-            'best_t_ccd': best_t_ccd}
+            'best_t_ccd': best_t_ccd,
+            'best_n_acq': best_n_acq,
+            'nom_id_hash': nom_id_hash,
+            'best_id_hash': best_id_hash,
+            }
 
     t_ccd_table = Table(temps.values())['day', 'caldate', 'pitch',
-                                        'nom_roll', 'nom_t_ccd',
-                                        'best_roll', 'best_t_ccd']
-    t_ccd_table['pitch'].format = '.2f'
-    t_ccd_table['nom_roll'].format = '.2f'
-    t_ccd_table['nom_t_ccd'].format = '.2f'
-    t_ccd_table['best_roll'].format = '.2f'
-    t_ccd_table['best_t_ccd'].format = '.2f'
+                                        'nom_roll', 'nom_t_ccd', 'nom_n_acq',
+                                        'best_roll', 'best_t_ccd', 'best_n_acq',
+                                        'nom_id_hash', 'best_id_hash']
     t_ccd_table.sort('day')
     return t_ccd_table
 
@@ -230,7 +252,8 @@ def make_target_report(ra, dec, start, stop, obsdir, obsid=None, redo=True):
     else:
         t_ccd_table = t_ccd_for_attitude(ra, dec,
                                          start=start,
-                                         stop=stop)
+                                         stop=stop,
+	                                     outdir=obsdir)
         t_ccd_table.write(table_file,
                           format='ascii.fixed_width_two_line')
     tfig = plot_time_table(t_ccd_table)
@@ -243,13 +266,13 @@ def make_target_report(ra, dec, start, stop, obsdir, obsid=None, redo=True):
     #jinja_env = jinja2.Environment(
     #    loader=jinja2.FileSystemLoader(
     #        os.path.join(os.environ['SKA'], 'data', 'mica', 'templates')))
-    masked_table = t_ccd_table[~np.isnan(t_ccd_table['nom_t_ccd'])]
-    html_table = masked_table.pformat(html=True, max_width=-1, max_lines=-1)
-    # customize table for sorttable
-    html_table[0] = '<table class="sortable" border cellpadding=5>'
-    html_table[1] = re.sub('<th>caldate</th>',
-                           '<th class="sorttable_nosort">caldate</th>',
-                           html_table[1])
+
+    #html_table = masked_table.pformat(html=True, max_width=-1, max_lines=-1)
+    ## customize table for sorttable
+    #html_table[0] = '<table class="sortable" border cellpadding=5>'
+    #html_table[1] = re.sub('<th>caldate</th>',
+    #                       '<th class="sorttable_nosort">caldate</th>',
+    #                       html_table[1])
     shutil.copy('sorttable.js', obsdir)
 
     jinja_env = jinja2.Environment(
@@ -257,9 +280,27 @@ def make_target_report(ra, dec, start, stop, obsdir, obsid=None, redo=True):
     jinja_env.line_comment_prefix = '##'
     jinja_env.line_statement_prefix = '#'
     template = jinja_env.get_template('target.html')
+    t_ccd_table['pitch'].format = '.2f'
+    t_ccd_table['nom_roll'].format = '.2f'
+    t_ccd_table['nom_t_ccd'].format = '.2f'
+    t_ccd_table['best_roll'].format = '.2f'
+    t_ccd_table['best_t_ccd'].format = '.2f'
+    formats = {'day': '%s',
+               'caldate': '%s',
+               'pitch': '%5.2f',
+               'nom_roll': '%5.2f',
+               'nom_t_ccd': '%5.2f',
+               'nom_n_acq': '%i',
+               'best_roll': '%5.2f',
+               'best_t_ccd': '%5.2f',
+               'best_n_acq': '%i',
+               'nom_id_hash': '%s',
+               'best_id_hash': '%s'}
+    masked_table = t_ccd_table[~np.isnan(t_ccd_table['nom_t_ccd'])]
     page = template.render(time_plot=tfig_html,
                            hist_plot='temperature_hist.png',
-                           table="\n".join(html_table),
+                           table=masked_table,
+                           formats=formats,
                            obsid=obsid,
                            ra=ra,
                            dec=dec,
@@ -276,12 +317,12 @@ def main():
     Determine required ACA temperature for an attitude over a time range
     """
     opt = get_options()
-    make_target_report(opt.ra, opt.dec,
-                       start=opt.start,
-                       stop=opt.stop,
-                       obsdir=opt.out,
-                       obsid=opt.obsid,
-                       )
+    t_ccd_table = make_target_report(opt.ra, opt.dec,
+                                     start=DateTime(opt.start),
+                                     stop=DateTime(opt.stop),
+                                     obsdir=opt.out,
+                                     obsid=opt.obsid,
+                                     )
 
 
 if __name__ == '__main__':
