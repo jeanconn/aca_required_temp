@@ -48,6 +48,8 @@ def get_options():
     parser.add_argument("--stop",
                         default="2015-12-31")
     parser.add_argument("--obsid")
+    parser.add_argument("--debug",
+                        action="store_true")
     opt = parser.parse_args()
     return opt
 
@@ -146,7 +148,7 @@ def t_ccd_for_attitude(ra, dec, start='2014-09-01', stop='2015-12-31', outdir=No
     lts_mid_time = start + (stop - start) / 2
 
     # Get stars in this field
-    cone_stars = agasc.get_agasc_cone(ra, dec, date=lts_mid_time)
+    cone_stars = agasc.get_agasc_cone(ra, dec, radius=1.1, date=lts_mid_time)
 
     # get a list of days
     days = start + np.arange(stop - start)
@@ -245,7 +247,7 @@ def plot_hist_table(t_ccd_table):
     return fig
 
 
-def make_target_report(ra, dec, start, stop, obsdir, obsid=None, redo=True):
+def make_target_report(ra, dec, start, stop, obsdir, obsid=None, debug=False, redo=True):
     table_file = os.path.join(obsdir, 't_ccd_roll.dat')
     if not redo and os.path.exists(table_file):
         t_ccd_table = Table.read(table_file, format='ascii.fixed_width_two_line')
@@ -261,6 +263,7 @@ def make_target_report(ra, dec, start, stop, obsdir, obsid=None, redo=True):
     hfig = plot_hist_table(t_ccd_table)
     hfig.savefig(os.path.join(obsdir,
                               'temperature_hist.png'))
+    plt.close(tfig)
     plt.close(hfig)
 
     #jinja_env = jinja2.Environment(
@@ -297,6 +300,11 @@ def make_target_report(ra, dec, start, stop, obsdir, obsid=None, redo=True):
                'nom_id_hash': '%s',
                'best_id_hash': '%s'}
     masked_table = t_ccd_table[~np.isnan(t_ccd_table['nom_t_ccd'])]
+    displaycols = masked_table.colnames
+    if not debug:
+        displaycols = ['day', 'caldate', 'pitch',
+                       'nom_roll', 'nom_t_ccd', 'nom_n_acq',
+                       'best_roll', 'best_t_ccd', 'best_n_acq']
     page = template.render(time_plot=tfig_html,
                            hist_plot='temperature_hist.png',
                            table=masked_table,
@@ -306,6 +314,7 @@ def make_target_report(ra, dec, start, stop, obsdir, obsid=None, redo=True):
                            dec=dec,
                            start=start.date,
                            stop=stop.date,
+                           displaycols=displaycols,
                            warm_limit=WARM_T_CCD)
     f = open(os.path.join(obsdir, 'index.html'), 'w')
     f.write(page)
@@ -322,6 +331,8 @@ def main():
                                      stop=DateTime(opt.stop),
                                      obsdir=opt.out,
                                      obsid=opt.obsid,
+                                     redo=opt.redo,
+                                     debug=opt.debug,
                                      )
 
 
