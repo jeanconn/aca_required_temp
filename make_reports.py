@@ -39,6 +39,7 @@ for t in targets:
     if not os.path.exists(obsdir):
         os.makedirs(obsdir)
     t_ccd_table = aca_required_temp.make_target_report(t['RA'], t['Dec'],
+                                                       t['Yoff'], t['Zoff'],
                                                        start=start,
                                                        stop=stop,
                                                        obsdir=obsdir,
