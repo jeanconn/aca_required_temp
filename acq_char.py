@@ -194,7 +194,7 @@ Star['Spoiler']['Intercept'] = 9		#	  %0 magnitude difference intercept (pixels)
 Star['Spoiler']['Slope'] = .5		#	  %spoiler slope boundary
 Star['Spoiler']['SigErrMultiplier'] = 3    #%multiplier for 1-sigma error calculations
 
-Star['Spoiler']['MagDiffLimit']     = 6 #%Stars this much dimmer can't ever be spoilers
+Star['Spoiler']['MagDiffLimit']     = -np.inf #%Stars this much dimmer can't ever be spoilers
                                       #%-Inf means all stars will be considered
                                       #%This value is checked against the difference
                                       #%in nominal magnitudes, regardless of errors
