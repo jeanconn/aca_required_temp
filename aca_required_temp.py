@@ -106,10 +106,11 @@ def pcad_point(ra, dec, roll, y_offset, z_offset):
 
 def select_stars(ra, dec, roll, cone_stars):
     id_key = (ra, dec, roll)
+    updated_cone_stars = cone_stars
     if id_key not in CAT_CACHE:
-        CAT_CACHE[id_key], cone_stars_update = mini_sausage.select_stars(
+        CAT_CACHE[id_key], updated_cone_stars = mini_sausage.select_stars(
             ra, dec, roll, cone_stars)
-    return CAT_CACHE[id_key]
+    return CAT_CACHE[id_key], updated_cone_stars
 
 
 def get_t_ccd_roll(ra, dec, y_offset, z_offset, pitch, time, cone_stars):
@@ -123,7 +124,8 @@ def get_t_ccd_roll(ra, dec, y_offset, z_offset, pitch, time, cone_stars):
     best_n_acq = None
     nom_roll = Ska.Sun.nominal_roll(ra, dec, time=time)
     ra_pnt, dec_pnt = pcad_point(ra, dec, nom_roll, y_offset, z_offset)
-    nom_stars = select_stars(ra_pnt, dec_pnt, nom_roll, cone_stars)
+    nom_stars, updated_cone_stars = select_stars(ra_pnt, dec_pnt, nom_roll, cone_stars)
+    cone_stars = updated_cone_stars
     nom_t_ccd, nom_n_acq = max_temp(time=time, stars=nom_stars)
     # check off nominal rolls in allowed range for a better catalog / temperature
     roll_dev = get_rolldev(pitch)
@@ -132,10 +134,10 @@ def get_t_ccd_roll(ra, dec, y_offset, z_offset, pitch, time, cone_stars):
                                        np.arange(d_roll, roll_dev, d_roll)])
     off_nom_rolls = np.round(nom_roll) + plus_minus_rolls
     all_rolls = {}
-    extra = 0
     for roll in off_nom_rolls:
         ra_pnt, dec_pnt = pcad_point(ra, dec, roll, y_offset, z_offset)
-        roll_stars = select_stars(ra_pnt, dec_pnt, roll, cone_stars)
+        roll_stars, updated_cone_stars = select_stars(ra_pnt, dec_pnt, roll, cone_stars)
+        cone_stars = updated_cone_stars
         roll_t_ccd, roll_n_acq = max_temp(time=time, stars=roll_stars)
         all_rolls[roll] = roll_t_ccd
         if roll_t_ccd is not None:
@@ -148,7 +150,7 @@ def get_t_ccd_roll(ra, dec, y_offset, z_offset, pitch, time, cone_stars):
                 break
     nom =  (nom_t_ccd, nom_roll, nom_n_acq, nom_stars)
     best = (best_t_ccd, best_roll, best_n_acq, best_stars)
-    return nom, best, all_rolls
+    return nom, best, all_rolls, updated_cone_stars
 
 
 def t_ccd_for_attitude(ra, dec, y_offset=0, z_offset=0, start='2014-09-01', stop='2015-12-31', outdir=None):
@@ -192,9 +194,10 @@ def t_ccd_for_attitude(ra, dec, y_offset=0, z_offset=0, start='2014-09-01', stop
                 'nom_id_hash': '',
                 'best_id_hash': ''}
             continue
-        nom, best, all_day_rolls = get_t_ccd_roll(
+        nom, best, all_day_rolls, updated_cone_stars = get_t_ccd_roll(
             ra, dec, y_offset, z_offset,
             day_pitch, time=day, cone_stars=cone_stars)
+        cone_stars = updated_cone_stars
         all_rolls.update(all_day_rolls)
         nom_t_ccd, nom_roll, nom_n_acq, nom_stars = nom
         best_t_ccd, best_roll, best_n_acq, best_stars = best

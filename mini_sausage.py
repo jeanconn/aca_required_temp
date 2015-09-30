@@ -83,6 +83,7 @@ def check_mag(cone_stars, opt):
     cone_stars['nomag'] = nomag
     return ~too_bright & ~too_dim & ~nomag
 
+
 def check_mag_spoilers(cone_stars, ok, opt):
     magOneSigError = cone_stars['mag_one_sig_err']
     stderr2 = cone_stars['mag_one_sig_err2']
@@ -94,7 +95,14 @@ def check_mag_spoilers(cone_stars, ok, opt):
     nSigma = opt['Spoiler']['SigErrMultiplier']
     magdifflim = opt['Spoiler']['MagDiffLimit']
     mag = cone_stars['MAG_ACA']
-
+    mag_col = 'mag_spoiled_{}'.format(nSigma)
+    mag_spoil_check = 'mag_spoil_check_{}'.format(nSigma)
+    if mag_col in cone_stars.columns:
+        # if ok for stage and not previously mag spoiler checked for this
+        # nsigma
+        ok = ok & ~cone_stars[mag_spoil_check]
+    if not np.any(ok):
+        return np.zeros_like(ok), ok
     coords = SkyCoord(cone_stars['RA_PMCORR'], cone_stars['DEC_PMCORR'],
                       unit='deg')
     maxsep_arcs = maxsep * PIX_2_ARC
@@ -117,7 +125,9 @@ def check_mag_spoilers(cone_stars, ok, opt):
     # this is now indexed over the cat/cand idxs so, re-index again
     spoiled = np.zeros_like(ok)
     spoiled[np.unique(cand_idx[spoils])] = True
-    return spoiled
+    # and include any previous spoilers
+    spoiled = spoiled | cone_stars[mag_col]
+    return spoiled, ok
 
 
 def check_bad_pixels(cone_stars, not_bad, opt):
@@ -148,6 +158,7 @@ def check_bad_pixels(cone_stars, not_bad, opt):
     full_distance = np.ones(len(cone_stars)) * 9999
     full_distance[not_bad] = distance
     return full_distance
+
 
 def dist_to_bright_spoiler(cone_stars, ok, nSigma):
     magOneSigError = cone_stars['mag_one_sig_err']
@@ -194,17 +205,27 @@ def check_stage(cone_stars, not_bad, opt):
     ok = mag_ok & not_bad
     if not np.any(ok):
         return ok
-    mag_spoiled = check_mag_spoilers(cone_stars, ok, opt)
-    cone_stars['mag_spoiled'] = cone_stars['mag_spoiled'] | mag_spoiled
+    nSigma = opt['Spoiler']['SigErrMultiplier']
+    mag_check_col = 'mag_spoil_check_{}'.format(nSigma)
+    if mag_check_col not in cone_stars.columns:
+        cone_stars[mag_check_col] = np.zeros_like(not_bad)
+        cone_stars['mag_spoiled_{}'.format(nSigma)] = np.zeros_like(not_bad)
+    mag_spoiled, checked= check_mag_spoilers(cone_stars, ok, opt)
+    cone_stars[mag_check_col] = cone_stars[mag_check_col] | checked
+    cone_stars['mag_spoiled_{}'.format(nSigma)] = (
+        cone_stars['mag_spoiled_{}'.format(nSigma)] | mag_spoiled)
     bad_pix_dist = check_bad_pixels(cone_stars, ok & ~mag_spoiled, opt)
     cone_stars['bad_pix_dist'] = np.min([cone_stars['bad_pix_dist'], bad_pix_dist],
                                         axis=0)
-    nSigma = opt['Spoiler']['SigErrMultiplier']
+
+    # these star distance checks are in pixels, so just do them for
+    # every roll
     cone_stars['star_dist_{}'.format(nSigma)] = 9999
     star_dist = dist_to_bright_spoiler(cone_stars, ok & ~mag_spoiled, nSigma)
     cone_stars['star_dist_{}'.format(nSigma)] = np.min(
                 [cone_stars['star_dist_{}'.format(nSigma)], star_dist],
                 axis=0)
+
     minBoxArc = np.ceil(fixedErrorPad/5.0)*5
     minBoxArc = np.max([opt['Select']['MinSearchBox'], minBoxArc])
     maxBoxArc = np.array(opt['Select']['MaxSearchBox'])
@@ -226,7 +247,6 @@ def check_stage(cone_stars, not_bad, opt):
 #    if opt['SearchSettings']['DoBminusVCheck']:
 #        badbv = check_bv(cone_stars, ok & ~mag_spoiled & ~bad_dist)
 #        ok = ok & ~badbv
-    
     return ok & ~mag_spoiled & ~bad_box
 
 
@@ -240,19 +260,14 @@ def get_mag_errs(cone_stars):
 
 def select_stars(ra, dec, roll, cone_stars):
 
-    cols = ['AGASC_ID', 'MAG_ACA', 'MAG_ACA_ERR', 'COLOR1', 'CLASS', 'POS_ERR',
-            'RA_PMCORR', 'DEC_PMCORR', 'ASPQ1', 'ASPQ2', 'ASPQ3', 'VAR',
-            'mag_one_sig_err', 'mag_one_sig_err2']
-
     if 'mag_one_sig_err' not in cone_stars.columns:
         cone_stars['mag_one_sig_err'], cone_stars['mag_one_sig_err2'] = get_mag_errs(cone_stars)
-
-    cone_stars = cone_stars[cols]
 
     q = Quat((ra, dec, roll))
     yag_deg, zag_deg = radec2yagzag(cone_stars['RA_PMCORR'], cone_stars['DEC_PMCORR'], q)
     row, col = chandra_aca.yagzag_to_pixels(yag_deg * 3600,
                                             zag_deg * 3600, allow_bad=True)
+    # update these for every new roll
     cone_stars['yang'] = yag_deg * 3600
     cone_stars['zang'] = zag_deg * 3600
     cone_stars['row'] = row
@@ -298,7 +313,6 @@ def select_stars(ra, dec, roll, cone_stars):
     cone_stars['bad_box'] = False
     cone_stars['stage'] = -1
     cone_stars['bad_pix_dist'] = 9999
-    cone_stars['mag_spoiled'] = False
     cone_stars['box_size_arc'] = 9999
 
     stage1  = check_stage(cone_stars, not_bad, acq_char.Acq)
