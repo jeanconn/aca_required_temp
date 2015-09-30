@@ -313,15 +313,19 @@ def select_stars(ra, dec, roll, cone_stars):
     stage1  = check_stage(cone_stars, not_bad, acq_char.Acq)
     cone_stars['stage'][stage1] = 1
 
-    stage2 = check_stage(cone_stars, not_bad & ~stage1, acq_char.Acq2)
-    cone_stars['stage'][stage2] = 2
-
-    stage3 = check_stage(cone_stars, not_bad & ~stage1 & ~stage2, acq_char.Acq3)
-    cone_stars['stage'][stage3] = 3
-
-    stage4 = check_stage(cone_stars, not_bad & ~stage1 & ~stage2 & ~stage3,
-                         acq_char.Acq4)
-    cone_stars['stage'][stage4] = 4
+    stage2 = np.zeros_like(stage1)
+    stage3 = np.zeros_like(stage1)
+    stage4 = np.zeros_like(stage1)
+    if np.count_nonzero(stage1) < 8:
+        stage2 = check_stage(cone_stars, not_bad & ~stage1, acq_char.Acq2)
+        cone_stars['stage'][stage2] = 2
+    if np.count_nonzero(stage1 | stage2) < 8:
+        stage3 = check_stage(cone_stars, not_bad & ~stage1 & ~stage2, acq_char.Acq3)
+        cone_stars['stage'][stage3] = 3
+    if np.count_nonzero(stage1 | stage2 | stage3) < 8:
+        stage4 = check_stage(cone_stars, not_bad & ~stage1 & ~stage2 & ~stage3,
+                             acq_char.Acq4)
+        cone_stars['stage'][stage4] = 4
 
     selected = cone_stars[stage1 | stage2 | stage3 | stage4]
     selected['box_delta'] = 240 - selected['box_size_arc']
