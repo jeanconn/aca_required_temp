@@ -127,13 +127,18 @@ def get_t_ccd_roll(ra, dec, y_offset, z_offset, pitch, time, cone_stars):
     nom_stars, updated_cone_stars = select_stars(ra_pnt, dec_pnt, nom_roll, cone_stars)
     cone_stars = updated_cone_stars
     nom_t_ccd, nom_n_acq = max_temp(time=time, stars=nom_stars)
+    all_rolls = {nom_roll: nom_t_ccd}
+    # if nom_t_ccd is WARM_T_CCD, stop now
+    if (nom_t_ccd == WARM_T_CCD):
+        nom =  (nom_t_ccd, nom_roll, nom_n_acq, nom_stars)
+        best = nom
+        return nom, best, all_rolls, updated_cone_stars
     # check off nominal rolls in allowed range for a better catalog / temperature
     roll_dev = get_rolldev(pitch)
     d_roll = 1.0
     plus_minus_rolls = np.concatenate([[-r, r] for r in
                                        np.arange(d_roll, roll_dev, d_roll)])
     off_nom_rolls = np.round(nom_roll) + plus_minus_rolls
-    all_rolls = {}
     for roll in off_nom_rolls:
         ra_pnt, dec_pnt = pcad_point(ra, dec, roll, y_offset, z_offset)
         roll_stars, updated_cone_stars = select_stars(ra_pnt, dec_pnt, roll, cone_stars)
