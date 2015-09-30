@@ -215,8 +215,7 @@ def check_stage(cone_stars, not_bad, opt):
     cone_stars['mag_spoiled_{}'.format(nSigma)] = (
         cone_stars['mag_spoiled_{}'.format(nSigma)] | mag_spoiled)
     bad_pix_dist = check_bad_pixels(cone_stars, ok & ~mag_spoiled, opt)
-    cone_stars['bad_pix_dist'] = np.min([cone_stars['bad_pix_dist'], bad_pix_dist],
-                                        axis=0)
+    cone_stars['bad_pix_dist'] = bad_pix_dist
 
     # these star distance checks are in pixels, so just do them for
     # every roll
@@ -234,13 +233,12 @@ def check_stage(cone_stars, not_bad, opt):
     starBox = np.min([cone_stars['star_dist_{}'.format(nSigma)],
                       cone_stars['bad_pix_dist'],
                       cone_stars['chip_edge_dist'],
-                      cone_stars['fov_edge_dist']], axis=0)
+                      cone_stars['fov_edge_dist'] * ARC_2_PIX], axis=0)
     box_size_arc = ((starBox * PIX_2_ARC) // 5) * 5
     box_size_arc[box_size_arc > maxBoxArc] = maxBoxArc
-    cone_stars['box_size_arc'] = np.min([cone_stars['box_size_arc'],
-                                         box_size_arc], axis=0)
+    cone_stars['box_size_arc'] = box_size_arc
     bad_box = starBox < (minBoxArc * ARC_2_PIX)
-    cone_stars['bad_box'] = cone_stars['bad_box'] | bad_box
+    cone_stars['bad_box'] = bad_box
 #    if opt['SearchSettings']['DoColumnRegisterCheck']:
 #        badcolumn = check_column(cone_stars, ok & ~mag_spoiled & ~bad_dist, opt, chip_pos)
 #        ok = ok & ~badcolumn
@@ -310,10 +308,7 @@ def select_stars(ra, dec, roll, cone_stars):
                 & ~nonstellar & ~bad_aspq1 & ~bad_aspq2 & ~bad_aspq3 & ~variable)
 
     # Set some column defaults that will be updated in check_stage
-    cone_stars['bad_box'] = False
     cone_stars['stage'] = -1
-    cone_stars['bad_pix_dist'] = 9999
-    cone_stars['box_size_arc'] = 9999
 
     stage1  = check_stage(cone_stars, not_bad, acq_char.Acq)
     cone_stars['stage'][stage1] = 1
