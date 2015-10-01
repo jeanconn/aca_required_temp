@@ -296,7 +296,7 @@ def select_stars(ra, dec, roll, cone_stars):
                   | (cone_stars['ASPQ3'] < np.min(acq_char.Acq['Inertial']['ASPQ3Lim'])))
     cone_stars['bad_aspq3'] = bad_aspq3
 
-    variable = cone_stars['VAR'] != -9999
+    variable = cone_stars['VAR'] > 9999
     cone_stars['variable'] = variable
 
     nonstellar = cone_stars['CLASS'] != 0
