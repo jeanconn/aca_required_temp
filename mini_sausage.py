@@ -20,6 +20,7 @@ PIX_2_ARC = acq_char.General['Pix2Arc']
 RAD_2_PIX = 180/np.pi*3600*ARC_2_PIX
 
 
+N_ACQ_STARS = 16
 DITHER = 8
 MANVR_ERROR = 60
 fixedErrorPad = DITHER + MANVR_ERROR
@@ -316,13 +317,13 @@ def select_stars(ra, dec, roll, cone_stars):
     stage2 = np.zeros_like(stage1)
     stage3 = np.zeros_like(stage1)
     stage4 = np.zeros_like(stage1)
-    if np.count_nonzero(stage1) < 8:
+    if np.count_nonzero(stage1) < N_ACQ_STARS:
         stage2 = check_stage(cone_stars, not_bad & ~stage1, acq_char.Acq2)
         cone_stars['stage'][stage2] = 2
-    if np.count_nonzero(stage1 | stage2) < 8:
+    if np.count_nonzero(stage1 | stage2) < N_ACQ_STARS:
         stage3 = check_stage(cone_stars, not_bad & ~stage1 & ~stage2, acq_char.Acq3)
         cone_stars['stage'][stage3] = 3
-    if np.count_nonzero(stage1 | stage2 | stage3) < 8:
+    if np.count_nonzero(stage1 | stage2 | stage3) < N_ACQ_STARS:
         stage4 = check_stage(cone_stars, not_bad & ~stage1 & ~stage2 & ~stage3,
                              acq_char.Acq4)
         cone_stars['stage'][stage4] = 4
@@ -331,9 +332,9 @@ def select_stars(ra, dec, roll, cone_stars):
     selected['box_delta'] = 240 - selected['box_size_arc']
     selected.sort(['stage', 'box_delta', 'MAG_ACA'])
     cone_stars['selected'] = False
-    for agasc_id in selected[0:8]['AGASC_ID']:
+    for agasc_id in selected[0:N_ACQ_STARS]['AGASC_ID']:
         cone_stars['selected'][cone_stars['AGASC_ID'] == agasc_id] = True
-    return selected[0:8], cone_stars
+    return selected[0:N_ACQ_STARS], cone_stars
 
 
 #return cone_stars[stage1 | stage2 | stage3 | stage4]

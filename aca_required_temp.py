@@ -6,7 +6,6 @@ warnings.filterwarnings(
     message="using `oa_ndim == 0` when `op_axes` is NULL is deprecated.*",
     category=DeprecationWarning)
 
-
 from itertools import count
 import numpy as np
 import agasc
@@ -34,16 +33,17 @@ import astropy.units as u
 import acq_char
 import mini_sausage
 
-N_ACQ_STARS = 5
+N_ACQ_STARS = 6
 EDGE_DIST = 30
 COLD_T_CCD = -21
-WARM_T_CCD = -10
+WARM_T_CCD = 20
 
 ODB_SI_ALIGN  = np.array([[1.0, 3.3742E-4, 2.7344E-4],
                              [-3.3742E-4, 1.0, 0.0],
                              [-2.7344E-4, 0.0, 1.0]])
 
 ROLL_TABLE = Table.read('roll_limits.dat', format='ascii')
+ROLL_TABLE['rolldev'] = 0.11
 
 # Save temperature calc a combination of stars
 # indexed by hash of agasc ids
@@ -87,6 +87,7 @@ def max_temp(time, stars):
 #        print "calc temp for ", id_hash
 #    else:
 #        print "cached temp for ", id_hash
+    print('min_n_acq, T_CCD = {} {}'.format(N_ACQ_STARS, T_CCD_CACHE[id_hash]))
     return T_CCD_CACHE[id_hash]
 
 
@@ -125,23 +126,37 @@ def get_t_ccd_roll(ra, dec, y_offset, z_offset, pitch, time, cone_stars):
     nom_roll = Ska.Sun.nominal_roll(ra, dec, time=time)
     ra_pnt, dec_pnt = pcad_point(ra, dec, nom_roll, y_offset, z_offset)
     nom_stars, updated_cone_stars = select_stars(ra_pnt, dec_pnt, nom_roll, cone_stars)
+
+    quad_upper_lower = np.where(nom_stars['col'] >= 0, 'Upper', 'Lower')
+    quad_left_right = np.where(nom_stars['row'] >= 0, 'left', 'right')
+    nom_stars['quadrant'] = [qul + ' ' + qlr for qul, qlr in zip(quad_upper_lower, quad_left_right)]
+
+    cat = nom_stars['AGASC_ID', 'MAG_ACA', 'quadrant', 'row', 'col']
+    cat.sort(['quadrant', 'MAG_ACA'])
+    cat['row'].format = '.2f'
+    cat['col'].format = '.2f'
+    cat['MAG_ACA'].format = '.2f'
+    cat.pprint(max_width=-1, max_lines=-1)
+    nom_stars = nom_stars[:8]
+
     cone_stars = updated_cone_stars
     nom_t_ccd, nom_n_acq = max_temp(time=time, stars=nom_stars)
     all_rolls = {nom_roll: nom_t_ccd}
     # if nom_t_ccd is WARM_T_CCD, stop now
     if (nom_t_ccd == WARM_T_CCD):
-        nom =  (nom_t_ccd, nom_roll, nom_n_acq, nom_stars)
+        nom = (nom_t_ccd, nom_roll, nom_n_acq, nom_stars)
         best = nom
         return nom, best, all_rolls, updated_cone_stars
     # check off nominal rolls in allowed range for a better catalog / temperature
     roll_dev = get_rolldev(pitch)
-    d_roll = 1.0
+    d_roll = 0.1
     plus_minus_rolls = np.concatenate([[-r, r] for r in
                                        np.arange(d_roll, roll_dev, d_roll)])
-    off_nom_rolls = np.round(nom_roll) + plus_minus_rolls
+    off_nom_rolls = nom_roll + plus_minus_rolls
     for roll in off_nom_rolls:
         ra_pnt, dec_pnt = pcad_point(ra, dec, roll, y_offset, z_offset)
         roll_stars, updated_cone_stars = select_stars(ra_pnt, dec_pnt, roll, cone_stars)
+        roll_stars = roll_stars[:8]
         cone_stars = updated_cone_stars
         roll_t_ccd, roll_n_acq = max_temp(time=time, stars=roll_stars)
         all_rolls[roll] = roll_t_ccd
@@ -178,27 +193,14 @@ def t_ccd_for_attitude(ra, dec, y_offset=0, z_offset=0, start='2014-09-01', stop
     cone_stars['mag_one_sig_err'], cone_stars['mag_one_sig_err2'] = mini_sausage.get_mag_errs(cone_stars)
 
     # get a list of days
-    days = start + np.arange(stop - start)
+    days = start + np.array([0])
 
     all_rolls = {}
     temps = {}
     # loop over them
     for day in days.date:
         day_pitch = Ska.Sun.pitch(ra, dec, time=day)
-        if day_pitch < 46.4 or day_pitch > 170:
-            temps["{}".format(day[0:8])] = {
-                'day': day[0:8],
-                'caldate': DateTime(day).caldate[4:9],
-                'pitch': day_pitch,
-                'nom_roll': np.nan,
-                'nom_t_ccd': np.nan,
-                'nom_n_acq': np.nan,
-                'best_roll': np.nan,
-                'best_t_ccd': np.nan,
-                'best_n_acq': np.nan,
-                'nom_id_hash': '',
-                'best_id_hash': ''}
-            continue
+        print('Day pitch = {}'.format(day_pitch))
         nom, best, all_day_rolls, updated_cone_stars = get_t_ccd_roll(
             ra, dec, y_offset, z_offset,
             day_pitch, time=day, cone_stars=cone_stars)
@@ -336,10 +338,10 @@ def make_target_report(ra, dec, y_offset, z_offset,
                'pitch': '%5.2f',
                'nom_roll': '%5.2f',
                'nom_t_ccd': '%5.2f',
-               'nom_n_acq': '%i',
+               'nom_n_acq': '%.1f',
                'best_roll': '%5.2f',
                'best_t_ccd': '%5.2f',
-               'best_n_acq': '%i',
+               'best_n_acq': '%.1f',
                'nom_id_hash': '%s',
                'best_id_hash': '%s'}
     masked_table = t_ccd_table[~np.isnan(t_ccd_table['nom_t_ccd'])]

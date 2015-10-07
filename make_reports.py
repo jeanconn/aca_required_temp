@@ -22,22 +22,23 @@ warnings.filterwarnings(
 
 import aca_required_temp
 
-targets = Table.read('aca_target_data_AO17.txt', format='ascii.tab', data_start=2)
-LABEL = 'Cycle 17'
-OUTDIR = 'cycle17'
+targets = Table.read('aca_target_data_venus.txt', format='ascii.basic', data_start=2)
+LABEL = 'Venus'
+OUTDIR = 'venus'
 
 PLANNING_LIMIT = -14
 
-start = DateTime('2015-09-01')
-stop = DateTime('2017-01-01')
+start = DateTime('2015:298')
+stop = DateTime('2015:301')
 
 report = []
 
-for t in targets:
+for t in targets[:2]:
     obsdir = os.path.join(OUTDIR, 'obs{:05d}'.format(t['ObsID']))
-    print t['ObsID']
     if not os.path.exists(obsdir):
         os.makedirs(obsdir)
+    print('Processing obsid {}'.format(t['ObsID']))
+
     t_ccd_table = aca_required_temp.make_target_report(t['RA'], t['Dec'],
                                                        t['Yoff'], t['Zoff'],
                                                        start=start,
@@ -45,7 +46,7 @@ for t in targets:
                                                        obsdir=obsdir,
                                                        obsid=t['ObsID'],
                                                        debug=False,
-                                                       redo=False)
+                                                       redo=True)
 
     report.append({'obsid': t['ObsID'],
                    'obsdir': obsdir,
