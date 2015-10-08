@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import os
 import warnings
 # Ignore known numexpr.necompiler and table.conditions warning
@@ -33,7 +35,7 @@ import astropy.units as u
 import acq_char
 import mini_sausage
 
-N_ACQ_STARS = 6
+N_ACQ_STARS = 6.0
 EDGE_DIST = 30
 COLD_T_CCD = -21
 WARM_T_CCD = 20
@@ -87,7 +89,6 @@ def max_temp(time, stars):
 #        print "calc temp for ", id_hash
 #    else:
 #        print "cached temp for ", id_hash
-    print('min_n_acq, T_CCD = {} {}'.format(N_ACQ_STARS, T_CCD_CACHE[id_hash]))
     return T_CCD_CACHE[id_hash]
 
 
@@ -128,15 +129,14 @@ def get_t_ccd_roll(ra, dec, y_offset, z_offset, pitch, time, cone_stars):
     nom_stars, updated_cone_stars = select_stars(ra_pnt, dec_pnt, nom_roll, cone_stars)
 
     quad_upper_lower = np.where(nom_stars['col'] >= 0, 'Upper', 'Lower')
-    quad_left_right = np.where(nom_stars['row'] >= 0, 'left', 'right')
+    quad_left_right = np.where(nom_stars['row'] >= 0, 'right', 'left')
     nom_stars['quadrant'] = [qul + ' ' + qlr for qul, qlr in zip(quad_upper_lower, quad_left_right)]
 
-    cat = nom_stars['AGASC_ID', 'MAG_ACA', 'quadrant', 'row', 'col']
-    cat.sort(['quadrant', 'MAG_ACA'])
-    cat['row'].format = '.2f'
-    cat['col'].format = '.2f'
-    cat['MAG_ACA'].format = '.2f'
-    cat.pprint(max_width=-1, max_lines=-1)
+    nom_cat = nom_stars['AGASC_ID', 'MAG_ACA', 'quadrant', 'row', 'col']
+    nom_cat.sort(['quadrant', 'MAG_ACA'])
+    nom_cat['row'].format = '.2f'
+    nom_cat['col'].format = '.2f'
+    nom_cat['MAG_ACA'].format = '.2f'
     nom_stars = nom_stars[:8]
 
     cone_stars = updated_cone_stars
@@ -144,7 +144,7 @@ def get_t_ccd_roll(ra, dec, y_offset, z_offset, pitch, time, cone_stars):
     all_rolls = {nom_roll: nom_t_ccd}
     # if nom_t_ccd is WARM_T_CCD, stop now
     if (nom_t_ccd == WARM_T_CCD):
-        nom = (nom_t_ccd, nom_roll, nom_n_acq, nom_stars)
+        nom = (nom_t_ccd, nom_roll, nom_n_acq, nom_stars, nom_cat)
         best = nom
         return nom, best, all_rolls, updated_cone_stars
     # check off nominal rolls in allowed range for a better catalog / temperature
@@ -168,12 +168,13 @@ def get_t_ccd_roll(ra, dec, y_offset, z_offset, pitch, time, cone_stars):
                 best_n_acq = roll_n_acq
             if (best_t_ccd == WARM_T_CCD):
                 break
-    nom =  (nom_t_ccd, nom_roll, nom_n_acq, nom_stars)
-    best = (best_t_ccd, best_roll, best_n_acq, best_stars)
+    nom = (nom_t_ccd, nom_roll, nom_n_acq, nom_stars, nom_cat)
+    best = (best_t_ccd, best_roll, best_n_acq, best_stars, nom_cat)
     return nom, best, all_rolls, updated_cone_stars
 
 
-def t_ccd_for_attitude(ra, dec, y_offset=0, z_offset=0, start='2014-09-01', stop='2015-12-31', outdir=None):
+def t_ccd_for_attitude(ra, dec, y_offset=0, z_offset=0, start='2014-09-01', stop='2015-12-31',
+                       outdir=None):
     # reset the caches at every new attitude
     global T_CCD_CACHE
     T_CCD_CACHE.clear()
@@ -200,14 +201,13 @@ def t_ccd_for_attitude(ra, dec, y_offset=0, z_offset=0, start='2014-09-01', stop
     # loop over them
     for day in days.date:
         day_pitch = Ska.Sun.pitch(ra, dec, time=day)
-        print('Day pitch = {}'.format(day_pitch))
         nom, best, all_day_rolls, updated_cone_stars = get_t_ccd_roll(
             ra, dec, y_offset, z_offset,
             day_pitch, time=day, cone_stars=cone_stars)
         cone_stars = updated_cone_stars
         all_rolls.update(all_day_rolls)
-        nom_t_ccd, nom_roll, nom_n_acq, nom_stars = nom
-        best_t_ccd, best_roll, best_n_acq, best_stars = best
+        nom_t_ccd, nom_roll, nom_n_acq, nom_stars, nom_cat = nom
+        best_t_ccd, best_roll, best_n_acq, best_stars, best_cat = best
         nom_id_hash = hashlib.md5(np.sort(nom_stars['AGASC_ID'])).hexdigest()
         best_id_hash = hashlib.md5(np.sort(best_stars['AGASC_ID'])).hexdigest()
         if not os.path.exists(os.path.join(outdir, "{}.html".format(nom_id_hash))):
@@ -216,6 +216,18 @@ def t_ccd_for_attitude(ra, dec, y_offset=0, z_offset=0, start='2014-09-01', stop
         if not os.path.exists(os.path.join(outdir, "{}.html".format(best_id_hash))):
             best_stars.write(os.path.join(outdir, "{}.html".format(best_id_hash)),
                             format="jsviewer")
+        print('*' * 80)
+        print('Date = {}'.format(start.date))
+        print('ra, dec, roll = {:.5f} {:.5f} {:.4f}'.format(ra, dec, nom_roll))
+        print('Computed pitch = {:.2f} [low-accuracy estimate from Ska.Sun (no ephemeris)]'
+              .format(day_pitch))
+        print('Max T_CCD = {:.2f} in which at least {:.1f} stars are expected '
+              .format(nom_t_ccd, N_ACQ_STARS))
+        print()
+        print('\n'.join(nom_cat.pformat()))
+        print()
+        print('*' * 80)
+
         temps["{}".format(day[0:8])] = {
             'day': day[0:8],
             'caldate': DateTime(day).caldate[4:9],
@@ -294,14 +306,14 @@ def make_target_report(ra, dec, y_offset, z_offset,
         t_ccd_roll = Table.read(just_roll_file, format='ascii.fixed_width_two_line')
     else:
         t_ccd_table, t_ccd_roll = t_ccd_for_attitude(ra, dec,
-                                         y_offset, z_offset,
-                                         start=start,
-                                         stop=stop,
-	                                     outdir=obsdir)
+                                                     y_offset, z_offset,
+                                                     start=start,
+                                                     stop=stop,
+                                                     outdir=obsdir)
         t_ccd_table.write(table_file,
                           format='ascii.fixed_width_two_line')
         t_ccd_roll.write(just_roll_file,
-                            format='ascii.fixed_width_two_line')
+                         format='ascii.fixed_width_two_line')
 
     tfig = plot_time_table(t_ccd_table)
     tfig_html = mpld3.fig_to_html(tfig)
@@ -357,8 +369,8 @@ def make_target_report(ra, dec, y_offset, z_offset,
                            obsid=obsid,
                            ra=ra,
                            dec=dec,
-                           start=start.date,
-                           stop=stop.date,
+                           start=start,
+                           stop=stop,
                            displaycols=displaycols,
                            warm_limit=WARM_T_CCD)
     f = open(os.path.join(obsdir, 'index.html'), 'w')

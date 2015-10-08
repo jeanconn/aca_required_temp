@@ -20,9 +20,9 @@ PIX_2_ARC = acq_char.General['Pix2Arc']
 RAD_2_PIX = 180/np.pi*3600*ARC_2_PIX
 
 
-N_ACQ_STARS = 16
+N_ACQ_STARS = 24
 DITHER = 8
-MANVR_ERROR = 60
+MANVR_ERROR = 30
 fixedErrorPad = DITHER + MANVR_ERROR
 fieldErrorPad = 0
 

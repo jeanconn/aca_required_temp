@@ -33,16 +33,15 @@ stop = DateTime('2015:301')
 
 report = []
 
-for t in targets[:2]:
+for t in targets:
     obsdir = os.path.join(OUTDIR, 'obs{:05d}'.format(t['ObsID']))
     if not os.path.exists(obsdir):
         os.makedirs(obsdir)
-    print('Processing obsid {}'.format(t['ObsID']))
 
     t_ccd_table = aca_required_temp.make_target_report(t['RA'], t['Dec'],
                                                        t['Yoff'], t['Zoff'],
-                                                       start=start,
-                                                       stop=stop,
+                                                       start=t['date'],
+                                                       stop=(DateTime(t['date']) + 1).date,
                                                        obsdir=obsdir,
                                                        obsid=t['ObsID'],
                                                        debug=False,
