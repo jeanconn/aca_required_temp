@@ -1,0 +1,60 @@
+<HTML>
+<HEAD>
+<TITLE>{{ label }}</TITLE>
+<style>
+table.sortable
+th:not(.sorttable_sorted):not(.sorttable_sorted_reverse):not(.sorttable_nosort):after {
+    content: " \25B4\25BE"
+}
+</style>
+<script type='text/javascript' src='sorttable.js'></script>
+</HEAD>
+<BODY>
+
+<H1>{{ label }}</H1>
+
+<P>ACA evaluation of maximum allowed temperature for nominal and "best possible" (for ACA) roll for
+these targets from {{ start }} to {{ stop }}.  Flagged in Red if maximum temperature is
+  colder than the current planning limit of {{ planning_limit }}.</P>
+
+<table class="sortable" border cellpadding=5>
+<thead><tr>{% for col in table.colnames %}<th>{{ col }}</th>{% endfor %}</tr></thead>
+{% for row in table %}<tr>
+{% for col in table.colnames -%}
+{% if col == 'obsid' -%}
+<td><a href='obs{{"%s"|format(row['obsid'])}}/index.html'>{{"%i"|format(row['obsid'])}}</a></td>
+{% elif col == 'max_nom_t_ccd' -%}
+{% if row['max_nom_t_ccd'] < planning_limit %}
+<td><font color="red">{{formats[col]|format(row[col])}}</font></td>
+{% else %}
+<td>{{formats[col]|format(row[col])}}</td>
+{% endif %}
+{% elif col == 'min_nom_t_ccd' -%}
+{% if row['min_nom_t_ccd'] < planning_limit %}
+<td><font color="red">{{formats[col]|format(row[col])}}</font></td>
+{% else %}
+<td>{{formats[col]|format(row[col])}}</td>
+{% endif %}
+{% elif col == 'max_best_t_ccd' -%}
+{% if row['max_best_t_ccd'] < planning_limit %}
+<td><font color="red">{{formats[col]|format(row[col])}}</font></td>
+{% else %}
+<td>{{formats[col]|format(row[col])}}</td>
+{% endif %}
+{% elif col == 'min_best_t_ccd' -%}
+{% if row['min_best_t_ccd'] < planning_limit %}
+<td><font color="red">{{formats[col]|format(row[col])}}</font></td>
+{% else %}
+<td>{{formats[col]|format(row[col])}}</td>
+{% endif %}
+{% else -%}
+<td>{{formats[col]|format(row[col])}}</td>
+{% endif -%}
+{% endfor %}</tr>
+{% endfor %}
+</table>
+
+Version: {{ gitlabel }}
+
+</BODY>
+</HTML>

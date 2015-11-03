@@ -1,0 +1,63 @@
+<HTML>
+<HEAD>
+{% if obsid is not none %}
+<TITLE>Obsid {{ obsid }}</TITLE>
+{% else %}
+<TITLE>RA, Dec: {{ ra }}, {{ dec }}</TITLE>
+{% endif %}
+<style>
+table.sortable
+th:not(.sorttable_sorted):not(.sorttable_sorted_reverse):not(.sorttable_nosort):after {
+    content: " \25B4\25BE"
+}
+</style>
+<script type='text/javascript' src='sorttable.js'></script>
+</HEAD>
+<BODY>
+
+{% if obsid is not none %}
+<H1>Obsid {{ obsid }}</H1>
+{% else %}
+<H1>RA, Dec: {{ ra }}, {{ dec }}</H1>
+{% endif %}
+
+<DL>
+<DT>RA, Dec</DT><DD>{{ ra }}, {{ dec }}</DD>
+<DT>Start Time</DT><DD>{{ start }}</DD>
+<DT>Stop Time</DT><DD>{{ stop }}</DD>
+</DL>
+
+<TABLE>
+<TR>
+<TD>
+<P>Distribution of maximum possible CCD temperature at nominal and "best allowed" roll
+over the calculated time range.</P>
+<IMG SRC="{{ hist_plot }}">
+</TD>
+<TD>
+<P>Maximum possible CCD temperature at nominal and "best allowed" roll
+over the calculated time range.  This has only been calculated up to {{ warm_limit }}
+so that is the the "best" value an attitude can have.</P>
+{{ time_plot }}
+</TD>
+</TR>
+</TABLE>
+
+<table class="sortable" border cellpadding=5>
+<thead><tr>{% for col in displaycols %}<th>{{ col }}</th>{% endfor %}</tr></thead>
+{% for row in table %}<tr>
+{% for col in displaycols -%}
+{% if col == 'nom_t_ccd' -%}
+<td><a href='{{"%s"|format(row['nom_id_hash'])}}.html'>{{"%5.2f"|format(row['nom_t_ccd'])}}</a></td>
+{% elif col == 'best_t_ccd' -%}
+<td><a href='{{"%s"|format(row['best_id_hash'])}}.html'>{{"%5.2f"|format(row['best_t_ccd'])}}</a></td>
+{% else -%}
+<td>{{formats[col]|format(row[col])}}</td>
+{% endif -%}
+{% endfor %}</tr>
+{% endfor %}
+</table>
+
+
+</BODY>
+</HTML>
