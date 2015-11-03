@@ -26,9 +26,14 @@ targets = Table.read('aca_target_data_AO17.txt', format='ascii.tab', data_start=
 LABEL = 'Cycle 17'
 OUTDIR = 'cycle17'
 
+#targets = Table.read('aca_target_data_AO16.txt', format='ascii.tab', data_start=2)
+#LABEL = 'Cycle 16'
+#OUTDIR = 'cycle16'
+
 PLANNING_LIMIT = -14
 
 start = DateTime('2015-09-01')
+#stop = DateTime('2015-09-04')
 stop = DateTime('2017-01-01')
 
 report = []
@@ -36,9 +41,7 @@ report = []
 for t in targets:
     obsdir = os.path.join(OUTDIR, 'obs{:05d}'.format(t['ObsID']))
     print t['ObsID']
-    if not os.path.exists(obsdir):
-        os.makedirs(obsdir)
-    t_ccd_table = aca_required_temp.make_target_report(t['RA'], t['Dec'],
+    t_ccd_table = aca_required_temp.get_target_report(t['RA'], t['Dec'],
                                                        t['Yoff'], t['Zoff'],
                                                        start=start,
                                                        stop=stop,
@@ -47,6 +50,8 @@ for t in targets:
                                                        debug=False,
                                                        redo=False)
 
+    if t_ccd_table is None:
+        continue
     report.append({'obsid': t['ObsID'],
                    'obsdir': obsdir,
                    'ra': t['RA'],
@@ -56,6 +61,8 @@ for t in targets:
                    'max_best_t_ccd': np.nanmax(t_ccd_table['best_t_ccd']),
                    'min_best_t_ccd': np.nanmin(t_ccd_table['best_t_ccd']),
                    })
+
+
 
 report = Table(report)['obsid', 'obsdir', 'ra', 'dec',
                        'max_nom_t_ccd', 'min_nom_t_ccd',
@@ -98,6 +105,10 @@ report.write(os.path.join(OUTDIR, "target_table.dat"),
 
 shutil.copy('sorttable.js', OUTDIR)
 
+import subprocess
+gitlabel = subprocess.check_output(['git', 'describe', '--always'])
+
+
 jinja_env = jinja2.Environment(
     loader=jinja2.FileSystemLoader('templates'))
 jinja_env.line_comment_prefix = '##'
@@ -108,6 +119,7 @@ page = template.render(table=report,
                        planning_limit=PLANNING_LIMIT,
                        start=start.fits,
                        stop=stop.fits,
+                       gitlabel=gitlabel,
                        label='ACA Evaluation of Targets')
 f = open(os.path.join(OUTDIR, 'index.html'), 'w')
 f.write(page)
