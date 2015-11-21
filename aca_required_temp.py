@@ -18,6 +18,7 @@ import matplotlib
 if __name__ == '__main__':
     matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+import json
 import mpld3
 
 from Ska.Matplotlib import plot_cxctime, cxctime2plotdate
@@ -27,7 +28,7 @@ import Ska.Sun
 from Ska.quatutil import radec2yagzag
 from Quaternion import Quat
 import chandra_aca
-from starcheck.star_probs import t_ccd_warm_limit
+from chandra_aca.star_probs import t_ccd_warm_limit
 from astropy.table import Table
 from astropy.coordinates import SkyCoord, search_around_sky
 import astropy.units as u
@@ -283,8 +284,21 @@ def plot_hist_table(t_ccd_table):
     return fig
 
 
+def check_update_needed(target, obsdir):
+    json_parfile = os.path.join(obsdir, 'obsinfo.json')
+    parlist = ['ra', 'dec', 'y_offset', 'z_offset', 'report_start', 'report_stop']
+    try:
+        pars = json.load(open(json_parfile))
+        for par in parlist:
+            assert np.allclose(pars[par], target[par], atol=1e-10)
+    except:
+        return True
+    return False
+
+
 def make_target_report(ra, dec, y_offset, z_offset,
                        start, stop, obsdir, obsid=None, debug=False, redo=True):
+    json_parfile = os.path.join(obsdir, 'obsinfo.json')
     table_file = os.path.join(obsdir, 't_ccd_vs_time.dat')
     just_roll_file = os.path.join(obsdir, 't_ccd_vs_roll.dat')
     if not redo and os.path.exists(table_file):
@@ -300,6 +314,13 @@ def make_target_report(ra, dec, y_offset, z_offset,
                           format='ascii.fixed_width_two_line')
         t_ccd_roll.write(just_roll_file,
                             format='ascii.fixed_width_two_line')
+        parfile = open(json_parfile, 'w')
+        parfile.write(json.dumps({'ra': ra, 'dec': dec, 'obsid': obsid,
+                                  'y_offset': y_offset, 'z_offset': z_offset,
+                                  'report_start': start.secs, 'report_stop': stop.secs},
+                                 indent=4,
+                                 sort_keys=True))
+        parfile.close()
 
     tfig = plot_time_table(t_ccd_table)
     tfig_html = mpld3.fig_to_html(tfig)
