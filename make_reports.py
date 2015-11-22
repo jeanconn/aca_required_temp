@@ -19,7 +19,7 @@ from Ska.DBI import DBI
 from Ska.Matplotlib import plot_cxctime
 from astropy.table import Table
 from Chandra.Time import DateTime
-from aca_required_temp import check_update_needed, make_target_report
+from aca_lts_eval import check_update_needed, make_target_report
 
 cycle = 17
 
