@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import os
 import warnings
 # Ignore known numexpr.necompiler and table.conditions warning
