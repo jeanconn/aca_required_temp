@@ -55,21 +55,36 @@ T_CCD_CACHE = {}
 # Star catalog for an attitude (ignores proper motion)
 CAT_CACHE = {}
 
+
 def get_options():
     import argparse
     parser = argparse.ArgumentParser(
-        description="Get required ACA temp for an attitude over a cycle")
+        description="Make report of required ACA temperatures for a target over a time range.")
     parser.add_argument("ra",
-                        type=float)
+                        type=float,
+                        help="Target RA in degrees")
     parser.add_argument("dec",
-                        type=float)
+                        type=float,
+                        help="Target Dec in degrees")
+    parser.add_argument("--y_offset",
+                        type=float,
+                        default=0.0,
+                        help="Y target offset in arcmin")
+    parser.add_argument("--z_offset",
+                        type=float,
+                        default=0.0,
+                        help="Z target offset in arcmin")
     parser.add_argument("--out",
-                        default="out")
+                        default="out",
+                        help="Output directory.")
     parser.add_argument("--start",
-                        default="2014-09-01")
+                        default="2015-09-01",
+                        help="Start time for evaluation of temperatures.  Default 2015-09-01")
     parser.add_argument("--stop",
-                        default="2015-12-31")
-    parser.add_argument("--obsid")
+                        default="2016-12-31",
+                        help="Stop time for evaluation of temperatures.  Default 2016-12-31")
+    parser.add_argument("--obsid",
+                        help="Obsid for html report")
     parser.add_argument("--debug",
                         action="store_true")
     opt = parser.parse_args()
@@ -300,6 +315,8 @@ def check_update_needed(target, obsdir):
 
 def make_target_report(ra, dec, y_offset, z_offset,
                        start, stop, obsdir, obsid=None, debug=False, redo=True):
+    if not os.path.exists(obsdir):
+        os.makedirs(obsdir)
     json_parfile = os.path.join(obsdir, 'obsinfo.json')
     table_file = os.path.join(obsdir, 't_ccd_vs_time.dat')
     just_roll_file = os.path.join(obsdir, 't_ccd_vs_roll.dat')
@@ -407,11 +424,13 @@ def main():
     """
     opt = get_options()
     t_ccd_table = make_target_report(opt.ra, opt.dec,
+                                     y_offset=opt.y_offset,
+                                     z_offset=opt.z_offset,
                                      start=DateTime(opt.start),
                                      stop=DateTime(opt.stop),
                                      obsdir=opt.out,
                                      obsid=opt.obsid,
-                                     redo=opt.redo,
+                                     redo=True,
                                      debug=opt.debug,
                                      )
 

@@ -1,28 +1,48 @@
+#!/usr/bin/env python
 import os
-import re
 import shutil
-import time
 import numpy as np
 import jinja2
 import matplotlib
 if __name__ == '__main__':
     matplotlib.use('Agg')
-import matplotlib.pyplot as plt
 import warnings
 # Ignore known numexpr.necompiler and table.conditions warning
 warnings.filterwarnings(
     'ignore',
     message="using `oa_ndim == 0` when `op_axes` is NULL is deprecated.*",
     category=DeprecationWarning)
-
 from Ska.DBI import DBI
-from Ska.Matplotlib import plot_cxctime
 from astropy.table import Table
 from Chandra.Time import DateTime
 from aca_lts_eval import check_update_needed, make_target_report
 
-cycle = 17
 
+def get_options():
+    import argparse
+    parser = argparse.ArgumentParser(
+        description="Make ACA LTS Eval plots for targets over a cycle")
+    parser.add_argument("--out",
+                       default="out")
+    parser.add_argument("--cycle",
+                        default=17)
+    parser.add_argument("--planning-limit",
+                        default=-14)
+    parser.add_argument("--start",
+                        help="Start time for roll/temp checks.  Defaults to ~Aug of previous cycle")
+    parser.add_argument("--stop",
+                        help="Stop time for roll/temp checks.  Default to January end of cycle.")
+    opt = parser.parse_args()
+    return opt
+
+
+opt = get_options()
+OUTDIR = opt.out
+if not os.path.exists(OUTDIR):
+    os.makedirs(OUTDIR)
+CYCLE = opt.cycle
+LABEL = 'Outstanding Targets for AO{}'.format(CYCLE)
+PLANNING_LIMIT = opt.planning_limit
 
 db = DBI(dbi='sybase', server='sqlsao', database='axafocat', user='aca_ops')
 query = """SELECT t.obsid, t.ra, t.dec,
@@ -34,18 +54,19 @@ WHERE
 AND NOT(t.ra = 0 AND t.dec = 0)
 AND NOT(t.ra IS NULL OR t.dec IS NULL)
 AND (t.obs_ao_str <= '{}'))
-ORDER BY t.obsid""".format(cycle)
+ORDER BY t.obsid""".format(CYCLE)
 
 targets = Table(db.fetchall(query))
-targets.write('target_table.txt', format='ascii.fixed_width_two_line')
+targets.write(os.path.join(OUTDIR, 'requested_targets.txt'),
+              format='ascii.fixed_width_two_line')
 
-LABEL = 'Outstanding Targets for AO{}'.format(cycle)
-OUTDIR = 'out'
 
-PLANNING_LIMIT = -14
-
-stop = DateTime('{}-01-01'.format(2000 + cycle))
+stop = DateTime('{}-01-01'.format(2000 + CYCLE))
 start = stop - (365 + 120)
+if opt.start is not None:
+    start = DateTime(opt.start)
+if opt.stop is not None:
+    stop = DateTime(opt.stop)
 
 targets['report_start'] = start.secs
 targets['report_stop'] = stop.secs
@@ -54,10 +75,13 @@ report = []
 
 for t in targets:
     obsdir = os.path.join(OUTDIR, 'obs{:05d}'.format(t['obsid']))
-    print t['obsid']
     if not os.path.exists(obsdir):
         os.makedirs(obsdir)
     redo = check_update_needed(t, obsdir)
+    if redo:
+        print "Processing {}".format(t['obsid'])
+    else:
+        print "Skipping {}; processing current".format(t['obsid'])
     t_ccd_table = make_target_report(t['ra'], t['dec'],
                                      t['y_offset'], t['z_offset'],
                                      start=start,
