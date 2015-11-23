@@ -13,9 +13,12 @@ th:not(.sorttable_sorted):not(.sorttable_sorted_reverse):not(.sorttable_nosort):
 
 <H1>{{ label }}</H1>
 
+<P><A HREF="target_table.dat">Target Data Table</A></P>
+
 <P>ACA evaluation of maximum allowed temperature for nominal and "best possible" (for ACA) roll for
 these targets from {{ start }} to {{ stop }}.  Flagged in Red if maximum temperature is
   colder than the current planning limit of {{ planning_limit }}.</P>
+
 
 <table class="sortable" border cellpadding=5>
 <thead><tr>{% for col in table.colnames %}<th>{{ col }}</th>{% endfor %}</tr></thead>

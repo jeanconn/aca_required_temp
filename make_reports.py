@@ -1,56 +1,100 @@
+#!/usr/bin/env python
 import os
-import re
 import shutil
 import numpy as np
 import jinja2
 import matplotlib
 if __name__ == '__main__':
     matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-
-from Ska.Matplotlib import plot_cxctime
-from astropy.table import Table
-from Chandra.Time import DateTime
-
 import warnings
 # Ignore known numexpr.necompiler and table.conditions warning
 warnings.filterwarnings(
     'ignore',
     message="using `oa_ndim == 0` when `op_axes` is NULL is deprecated.*",
     category=DeprecationWarning)
+from Ska.DBI import DBI
+from astropy.table import Table
+from Chandra.Time import DateTime
+from aca_lts_eval import check_update_needed, make_target_report
 
 
-import aca_required_temp
+def get_options():
+    import argparse
+    parser = argparse.ArgumentParser(
+        description="Make ACA LTS Eval plots for targets over a cycle")
+    parser.add_argument("--out",
+                       default="out")
+    parser.add_argument("--cycle",
+                        default=17)
+    parser.add_argument("--planning-limit",
+                        default=-14)
+    parser.add_argument("--start",
+                        help="Start time for roll/temp checks.  Defaults to ~Aug of previous cycle")
+    parser.add_argument("--stop",
+                        help="Stop time for roll/temp checks.  Default to January end of cycle.")
+    opt = parser.parse_args()
+    return opt
 
-targets = Table.read('aca_target_data_AO17.txt', format='ascii.tab', data_start=2)
-LABEL = 'Cycle 17'
-OUTDIR = 'cycle17'
 
-PLANNING_LIMIT = -14
+opt = get_options()
+OUTDIR = opt.out
+if not os.path.exists(OUTDIR):
+    os.makedirs(OUTDIR)
+CYCLE = opt.cycle
+LABEL = 'Outstanding Targets for AO{}'.format(CYCLE)
+PLANNING_LIMIT = opt.planning_limit
 
-start = DateTime('2015-09-01')
-stop = DateTime('2017-01-01')
+db = DBI(dbi='sybase', server='sqlsao', database='axafocat', user='aca_ops')
+query = """SELECT t.obsid, t.ra, t.dec,
+t.y_det_offset as y_offset, t.z_det_offset as z_offset,
+t.approved_exposure_time, t.instrument, t.grating, t.obs_ao_str
+FROM target t
+WHERE
+((t.status='unobserved' OR t.status='partially observed' OR t.status='untriggered')
+AND NOT(t.ra = 0 AND t.dec = 0)
+AND NOT(t.ra IS NULL OR t.dec IS NULL)
+AND (t.obs_ao_str <= '{}'))
+ORDER BY t.obsid""".format(CYCLE)
+
+targets = Table(db.fetchall(query))
+targets.write(os.path.join(OUTDIR, 'requested_targets.txt'),
+              format='ascii.fixed_width_two_line')
+
+
+stop = DateTime('{}-01-01'.format(2000 + CYCLE))
+start = stop - (365 + 120)
+if opt.start is not None:
+    start = DateTime(opt.start)
+if opt.stop is not None:
+    stop = DateTime(opt.stop)
+
+targets['report_start'] = start.secs
+targets['report_stop'] = stop.secs
 
 report = []
 
 for t in targets:
-    obsdir = os.path.join(OUTDIR, 'obs{:05d}'.format(t['ObsID']))
-    print t['ObsID']
+    obsdir = os.path.join(OUTDIR, 'obs{:05d}'.format(t['obsid']))
     if not os.path.exists(obsdir):
         os.makedirs(obsdir)
-    t_ccd_table = aca_required_temp.make_target_report(t['RA'], t['Dec'],
-                                                       t['Yoff'], t['Zoff'],
-                                                       start=start,
-                                                       stop=stop,
-                                                       obsdir=obsdir,
-                                                       obsid=t['ObsID'],
-                                                       debug=False,
-                                                       redo=False)
+    redo = check_update_needed(t, obsdir)
+    if redo:
+        print "Processing {}".format(t['obsid'])
+    else:
+        print "Skipping {}; processing current".format(t['obsid'])
+    t_ccd_table = make_target_report(t['ra'], t['dec'],
+                                     t['y_offset'], t['z_offset'],
+                                     start=start,
+                                     stop=stop,
+                                     obsdir=obsdir,
+                                     obsid=t['obsid'],
+                                     debug=False,
+                                     redo=redo)
 
-    report.append({'obsid': t['ObsID'],
+    report.append({'obsid': t['obsid'],
                    'obsdir': obsdir,
-                   'ra': t['RA'],
-                   'dec': t['Dec'],
+                   'ra': t['ra'],
+                   'dec': t['dec'],
                    'max_nom_t_ccd': np.nanmax(t_ccd_table['nom_t_ccd']),
                    'min_nom_t_ccd': np.nanmin(t_ccd_table['nom_t_ccd']),
                    'max_best_t_ccd': np.nanmax(t_ccd_table['best_t_ccd']),
@@ -71,27 +115,6 @@ formats = {
     'max_best_t_ccd': '%5.2f',
     'min_best_t_ccd': '%5.2f'}
 
-
-#html_table = report.pformat(html=True, max_width=-1, max_lines=-1)
-# customize table for sorttable
-#new_table = ['<table class="sortable" border cellpadding=5>']
-#new_table.append(html_table[1])
-#new_table.append(re.sub('<th>obsid</th>',
-#                        '<th>obsid<span id="sorttable_sortfwdind">&nbsp;&#9662;</span></th>',
-#                        html_table[1]))
-# just an idea for marking up obsids that are likely to hit the planning
-# limit in red
-#for row in html_table[2:]:
-#    new_row = re.sub('<td>True</td>',
-#                     '<td><font color="red">True</font></td>',
-#                     row)
-#    obs_match = re.search("<tr><td>(\d{1,5})</td>", new_row)
-#    if obs_match:
-#        new_row = re.sub("<tr><td>\d{1,5}</td>",
-#                         "<tr><td><a href='obs{}/index.html'>{}</a></td>".format(
-#                obs_match.group(1), obs_match.group(1)),
-#                         new_row)
-#    new_table.append(new_row)
 
 report.write(os.path.join(OUTDIR, "target_table.dat"),
              format="ascii.fixed_width_two_line")
