@@ -5,7 +5,8 @@ TASK = aca_lts_eval
 FLIGHT_ENV = SKA
 
 # Set the names of all files that get installed
-SHARE = make_reports.py aca_lts_eval aca_lts_eval.py acq_char.py mini_sausage.py
+SHARE = make_reports.py aca_lts_eval aca_lts_eval.py acq_char.py mini_sausage.py \
+	roll_limits.dat
 TEMPLATES = templates/target.html templates/toptable.html
 DATA = task_schedule.cfg
 

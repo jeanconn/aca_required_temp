@@ -46,7 +46,8 @@ ODB_SI_ALIGN  = np.array([[1.0, 3.3742E-4, 2.7344E-4],
                              [-3.3742E-4, 1.0, 0.0],
                              [-2.7344E-4, 0.0, 1.0]])
 
-ROLL_TABLE = Table.read('roll_limits.dat', format='ascii')
+TASK_DATA = os.path.dirname(__file__)
+ROLL_TABLE = Table.read(os.path.join(TASK_DATA, 'roll_limits.dat'), format='ascii')
 
 # Save temperature calc a combination of stars
 # indexed by hash of agasc ids
