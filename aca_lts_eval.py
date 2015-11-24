@@ -46,7 +46,7 @@ ODB_SI_ALIGN  = np.array([[1.0, 3.3742E-4, 2.7344E-4],
                              [-3.3742E-4, 1.0, 0.0],
                              [-2.7344E-4, 0.0, 1.0]])
 
-TASK_DATA = os.path.dirname(__file__)
+TASK_DATA = os.path.join(os.environ['SKA'], 'data', 'aca_lts_eval')
 ROLL_TABLE = Table.read(os.path.join(TASK_DATA, 'roll_limits.dat'), format='ascii')
 
 # Save temperature calc a combination of stars
@@ -363,10 +363,10 @@ def make_target_report(ra, dec, y_offset, z_offset,
     #html_table[1] = re.sub('<th>caldate</th>',
     #                       '<th class="sorttable_nosort">caldate</th>',
     #                       html_table[1])
-    shutil.copy('sorttable.js', obsdir)
+    shutil.copy(os.path.join(TASK_DATA, 'sorttable.js'), obsdir)
 
     jinja_env = jinja2.Environment(
-        loader=jinja2.FileSystemLoader('templates'))
+        loader=jinja2.FileSystemLoader(os.path.join(TASK_DATA, 'templates')))
     jinja_env.line_comment_prefix = '##'
     jinja_env.line_statement_prefix = '#'
     template = jinja_env.get_template('target.html')

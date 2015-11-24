@@ -43,6 +43,7 @@ if not os.path.exists(OUTDIR):
 CYCLE = opt.cycle
 LABEL = 'Outstanding Targets for AO{}'.format(CYCLE)
 PLANNING_LIMIT = opt.planning_limit
+TASK_DATA = os.path.join(os.environ['SKA'], 'data', 'aca_lts_eval')
 
 db = DBI(dbi='sybase', server='sqlsao', database='axafocat', user='aca_ops')
 query = """SELECT t.obsid, t.ra, t.dec,
@@ -119,10 +120,12 @@ formats = {
 report.write(os.path.join(OUTDIR, "target_table.dat"),
              format="ascii.fixed_width_two_line")
 
-shutil.copy('sorttable.js', OUTDIR)
+
+shutil.copy(os.path.join(TASK_DATA, 'sorttable.js'), OUTDIR)
+
 
 jinja_env = jinja2.Environment(
-    loader=jinja2.FileSystemLoader('templates'))
+    loader=jinja2.FileSystemLoader(os.path.join(TASK_DATA, 'templates')))
 jinja_env.line_comment_prefix = '##'
 jinja_env.line_statement_prefix = '#'
 template = jinja_env.get_template('toptable.html')
