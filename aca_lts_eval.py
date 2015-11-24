@@ -252,8 +252,10 @@ def t_ccd_for_attitude(ra, dec, y_offset=0, z_offset=0, start='2014-09-01', stop
                                         'best_roll', 'best_t_ccd', 'best_n_acq',
                                         'nom_id_hash', 'best_id_hash']
     t_ccd_table.sort('day')
-    t_ccd_roll = Table(rows=all_rolls.items(), names=('roll', 't_ccd'))
-    t_ccd_roll.sort('roll')
+    t_ccd_roll = None
+    if len(all_rolls) > 0:
+        t_ccd_roll = Table(rows=all_rolls.items(), names=('roll', 't_ccd'))
+        t_ccd_roll.sort('roll')
     return t_ccd_table, t_ccd_roll
 
 
@@ -321,7 +323,7 @@ def make_target_report(ra, dec, y_offset, z_offset,
     json_parfile = os.path.join(obsdir, 'obsinfo.json')
     table_file = os.path.join(obsdir, 't_ccd_vs_time.dat')
     just_roll_file = os.path.join(obsdir, 't_ccd_vs_roll.dat')
-    if not redo and os.path.exists(table_file):
+    if not redo and os.path.exists(table_file) and os.path.exists(just_roll_file):
         t_ccd_table = Table.read(table_file, format='ascii.fixed_width_two_line')
         t_ccd_roll = Table.read(just_roll_file, format='ascii.fixed_width_two_line')
     else:
@@ -332,8 +334,9 @@ def make_target_report(ra, dec, y_offset, z_offset,
 	                                     outdir=obsdir)
         t_ccd_table.write(table_file,
                           format='ascii.fixed_width_two_line')
-        t_ccd_roll.write(just_roll_file,
-                            format='ascii.fixed_width_two_line')
+        if t_ccd_roll is not None:
+            t_ccd_roll.write(just_roll_file,
+                             format='ascii.fixed_width_two_line')
         parfile = open(json_parfile, 'w')
         parfile.write(json.dumps({'ra': ra, 'dec': dec, 'obsid': obsid,
                                   'y_offset': y_offset, 'z_offset': z_offset,
