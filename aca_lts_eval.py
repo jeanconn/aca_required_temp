@@ -100,7 +100,7 @@ def max_temp(time, stars):
             date=time,
             mags=stars['MAG_ACA'],
             colors=stars['COLOR1'],
-            min_n_acq=N_ACQ_STARS,
+            min_n_acq=(2, 8e-3),
             cold_t_ccd=COLD_T_CCD,
             warm_t_ccd=WARM_T_CCD)
 #        print "calc temp for ", id_hash
