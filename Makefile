@@ -11,7 +11,11 @@ DATA = task_schedule.cfg roll_limits.dat sorttable.js
 
 include /proj/sot/ska/include/Makefile.FLIGHT
 
-install:
+version:
+	git describe --always > VERSION
+	rsync --times --cvs-exclude VERSION $(INSTALL_DATA)
+
+install: version
 #  Uncomment the lines which apply for this task
 	mkdir -p $(INSTALL_SHARE)
 	mkdir -p $(INSTALL_DATA)

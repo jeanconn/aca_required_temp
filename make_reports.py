@@ -4,6 +4,7 @@ import shutil
 import numpy as np
 import jinja2
 import matplotlib
+import subprocess
 if __name__ == '__main__':
     matplotlib.use('Agg')
 import warnings
@@ -123,6 +124,10 @@ report.write(os.path.join(OUTDIR, "target_table.dat"),
 
 shutil.copy(os.path.join(TASK_DATA, 'sorttable.js'), OUTDIR)
 
+try:
+    gitlabel = subprocess.check_output(['git', 'describe', '--always'])
+except:
+    gitlabel = open(os.path.join(TASK_DATA, 'VERSION')).read().strip()
 
 jinja_env = jinja2.Environment(
     loader=jinja2.FileSystemLoader(os.path.join(TASK_DATA, 'templates')))
@@ -134,6 +139,7 @@ page = template.render(table=report,
                        planning_limit=PLANNING_LIMIT,
                        start=start.fits,
                        stop=stop.fits,
+                       gitlabel=gitlabel,
                        label='ACA Evaluation of Targets')
 f = open(os.path.join(OUTDIR, 'index.html'), 'w')
 f.write(page)
