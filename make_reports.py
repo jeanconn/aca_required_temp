@@ -121,6 +121,9 @@ formats = {
 report.write(os.path.join(OUTDIR, "target_table.dat"),
              format="ascii.fixed_width_two_line")
 
+# remove obsdir from the web version of the report
+del report['obsdir']
+
 
 shutil.copy(os.path.join(TASK_DATA, 'sorttable.js'), OUTDIR)
 
