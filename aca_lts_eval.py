@@ -144,7 +144,6 @@ def select_ri_stars(ra, dec, cone_stars):
     return RI_CAT_CACHE[id_key], updated_cone_stars
 
 
-
 def get_t_ccd_roll(ra, dec, y_offset, z_offset, pitch, time, cone_stars):
     """
     Loop over possible roll range for this pitch and return best
@@ -162,9 +161,12 @@ def get_t_ccd_roll(ra, dec, y_offset, z_offset, pitch, time, cone_stars):
         roll_indep_stars = select_ri_stars(ra_pnt, dec_pnt, cone_stars)[0]
         ri_t_ccd, ri_t_acq = max_temp(time=time, stars=roll_indep_stars)
         if (ri_t_ccd == WARM_T_CCD):
-            print "Roll indep sol for {}".format(time)
             nom = (WARM_T_CCD, nom_roll, ri_t_acq, roll_indep_stars)
-            return nom, nom, {nom_roll: ri_t_ccd}, cone_stars
+            return {'nomdata': nom,
+                    'bestdata': nom,
+                    'rolls': {nom_roll: ri_t_ccd},
+                    'cone_stars': cone_stars,
+                    'roll_indep': True}
     nom_stars, updated_cone_stars = select_stars(ra_pnt, dec_pnt, nom_roll, cone_stars)
     cone_stars = updated_cone_stars
     nom_t_ccd, nom_n_acq = max_temp(time=time, stars=nom_stars)
@@ -173,7 +175,12 @@ def get_t_ccd_roll(ra, dec, y_offset, z_offset, pitch, time, cone_stars):
     if (nom_t_ccd == WARM_T_CCD):
         nom =  (nom_t_ccd, nom_roll, nom_n_acq, nom_stars)
         best = nom
-        return nom, best, all_rolls, updated_cone_stars
+        return {'nomdata': nom,
+                'bestdata': best,
+                'rolls': all_rolls,
+                'cone_stars': updated_cone_stars,
+                'roll_indep': False}
+
     # check off nominal rolls in allowed range for a better catalog / temperature
     roll_dev = get_rolldev(pitch)
     d_roll = 1.0
@@ -196,7 +203,11 @@ def get_t_ccd_roll(ra, dec, y_offset, z_offset, pitch, time, cone_stars):
                 break
     nom =  (nom_t_ccd, nom_roll, nom_n_acq, nom_stars)
     best = (best_t_ccd, best_roll, best_n_acq, best_stars)
-    return nom, best, all_rolls, updated_cone_stars
+    return {nomdata: nom,
+            bestdata: best,
+            rolls: all_rolls,
+            cone_stars: updated_cone_stars,
+            roll_indep: False}
 
 
 def t_ccd_for_attitude(ra, dec, y_offset=0, z_offset=0, start='2014-09-01', stop='2015-12-31', outdir=None):
@@ -225,7 +236,10 @@ def t_ccd_for_attitude(ra, dec, y_offset=0, z_offset=0, start='2014-09-01', stop
 
     all_rolls = {}
     temps = {}
-    # loop over them
+    roll_indep_data = {}
+    # loop over them to see which need data
+    last_good_pitch = None
+    last_good_day = None
     for day in days.date:
         day_pitch = Ska.Sun.pitch(ra, dec, time=day)
         if day_pitch < 46.4 or day_pitch > 170:
@@ -241,14 +255,23 @@ def t_ccd_for_attitude(ra, dec, y_offset=0, z_offset=0, start='2014-09-01', stop
                 'best_n_acq': np.nan,
                 'nom_id_hash': '',
                 'best_id_hash': ''}
-            continue
-        nom, best, all_day_rolls, updated_cone_stars = get_t_ccd_roll(
-            ra, dec, y_offset, z_offset,
-            day_pitch, time=day, cone_stars=cone_stars)
-        cone_stars = updated_cone_stars
-        all_rolls.update(all_day_rolls)
-        nom_t_ccd, nom_roll, nom_n_acq, nom_stars = nom
-        best_t_ccd, best_roll, best_n_acq, best_stars = best
+        else:
+            temps["{}".format(day[0:8])] = {
+                'day': day[0:8],
+                'caldate': DateTime(day).caldate[4:9],
+                'pitch': day_pitch}
+            last_good_day = day
+            last_good_pitch = day_pitch
+
+    # Run the temperature thing once to see if this might be good for all rolls
+    r_data_check = get_t_ccd_roll(
+        ra, dec, y_offset, z_offset,
+        last_good_pitch, time=last_good_day, cone_stars=cone_stars)
+
+    # If it is roll independent, write out the star hashes here
+    if r_data_check['roll_indep']:
+        nom_t_ccd, nom_roll, nom_n_acq, nom_stars = r_data_check['nomdata']
+        best_t_ccd, best_roll, best_n_acq, best_stars = r_data_check['bestdata']
         nom_id_hash = hashlib.md5(np.sort(nom_stars['AGASC_ID'])).hexdigest()
         best_id_hash = hashlib.md5(np.sort(best_stars['AGASC_ID'])).hexdigest()
         if not os.path.exists(os.path.join(outdir, "{}.html".format(nom_id_hash))):
@@ -257,19 +280,51 @@ def t_ccd_for_attitude(ra, dec, y_offset=0, z_offset=0, start='2014-09-01', stop
         if not os.path.exists(os.path.join(outdir, "{}.html".format(best_id_hash))):
             best_stars.write(os.path.join(outdir, "{}.html".format(best_id_hash)),
                             format="jsviewer")
-        temps["{}".format(day[0:8])] = {
-            'day': day[0:8],
-            'caldate': DateTime(day).caldate[4:9],
-            'pitch': day_pitch,
-            'nom_roll': nom_roll,
-            'nom_t_ccd': nom_t_ccd,
-            'nom_n_acq': nom_n_acq,
-            'best_roll': best_roll,
-            'best_t_ccd': best_t_ccd,
-            'best_n_acq': best_n_acq,
-            'nom_id_hash': nom_id_hash,
-            'best_id_hash': best_id_hash,
-            }
+
+    for tday in temps:
+        if nom_roll in temps[tday]:
+            continue
+        # If roll independent copy in the value from that solution
+        if r_data_check['roll_indep']:
+            nom_t_ccd, nom_roll, nom_n_acq, nom_stars = r_data_check['nomdata']
+            best_t_ccd, best_roll, best_n_acq, best_stars = r_data_check['bestdata']
+            temps[tday].update({
+                'nom_roll': nom_roll,
+                'nom_t_ccd': nom_t_ccd,
+                'nom_n_acq': nom_n_acq,
+                'best_roll': best_roll,
+                'best_t_ccd': best_t_ccd,
+                'best_n_acq': best_n_acq,
+                'nom_id_hash': nom_id_hash,
+                'best_id_hash': best_id_hash,
+                })
+            continue
+        t_ccd_roll_data = get_t_ccd_roll(
+            ra, dec, y_offset, z_offset,
+            temps[tday]['pitch'], time=temps[tday]['day'], cone_stars=cone_stars)
+        all_day_rolls = t_ccd_roll_data['rolls']
+        all_rolls.update(all_day_rolls)
+        cone_stars = t_ccd_roll_data['updated_cone_stars']
+        nom_t_ccd, nom_roll, nom_n_acq, nom_stars = t_ccd_roll_data['nomdata']
+        best_t_ccd, best_roll, best_n_acq, best_stars = t_ccd_roll['bestdata']
+        nom_id_hash = hashlib.md5(np.sort(nom_stars['AGASC_ID'])).hexdigest()
+        best_id_hash = hashlib.md5(np.sort(best_stars['AGASC_ID'])).hexdigest()
+        if not os.path.exists(os.path.join(outdir, "{}.html".format(nom_id_hash))):
+            nom_stars.write(os.path.join(outdir, "{}.html".format(nom_id_hash)),
+                            format="jsviewer")
+        if not os.path.exists(os.path.join(outdir, "{}.html".format(best_id_hash))):
+            best_stars.write(os.path.join(outdir, "{}.html".format(best_id_hash)),
+                             format="jsviewer")
+        temps[tday].update({
+                'nom_roll': nom_roll,
+                'nom_t_ccd': nom_t_ccd,
+                'nom_n_acq': nom_n_acq,
+                'best_roll': best_roll,
+                'best_t_ccd': best_t_ccd,
+                'best_n_acq': best_n_acq,
+                'nom_id_hash': nom_id_hash,
+                'best_id_hash': best_id_hash,
+                })
 
     t_ccd_table = Table(temps.values())['day', 'caldate', 'pitch',
                                         'nom_roll', 'nom_t_ccd', 'nom_n_acq',
