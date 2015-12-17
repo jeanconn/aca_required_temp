@@ -75,6 +75,10 @@ if opt.stop is not None:
 targets['report_start'] = start.secs
 targets['report_stop'] = stop.secs
 
+last_data_file = os.path.join(OUTDIR, 'target_table.dat')
+if os.path.exists(last_data_file):
+    last_data = Table.read(last_data_file, format='ascii.fixed_width_two_line')
+
 report = []
 
 for t in targets:
@@ -82,28 +86,39 @@ for t in targets:
     if not os.path.exists(obsdir):
         os.makedirs(obsdir)
     redo = check_update_needed(t, obsdir)
-    if redo:
+    if redo or last_data is None or t['obsid'] not in last_data['obsid']:
         print "Processing {}".format(t['obsid'])
+        t_ccd_table = make_target_report(t['ra'], t['dec'],
+                                         t['y_offset'], t['z_offset'],
+                                         start=start,
+                                         stop=stop,
+                                         obsdir=obsdir,
+                                         obsid=t['obsid'],
+                                         debug=False,
+                                         redo=redo)
+        report.append({'obsid': t['obsid'],
+                       'obsdir': obsdir,
+                       'ra': t['ra'],
+                       'dec': t['dec'],
+                       'max_nom_t_ccd': np.nanmax(t_ccd_table['nom_t_ccd']),
+                       'min_nom_t_ccd': np.nanmin(t_ccd_table['nom_t_ccd']),
+                       'max_best_t_ccd': np.nanmax(t_ccd_table['best_t_ccd']),
+                       'min_best_t_ccd': np.nanmin(t_ccd_table['best_t_ccd']),
+                       })
+
     else:
         print "Skipping {}; processing current".format(t['obsid'])
-    t_ccd_table = make_target_report(t['ra'], t['dec'],
-                                     t['y_offset'], t['z_offset'],
-                                     start=start,
-                                     stop=stop,
-                                     obsdir=obsdir,
-                                     obsid=t['obsid'],
-                                     debug=False,
-                                     redo=redo)
+        previous_record = last_data[last_data['obsid'] == t['obsid']]
+        report.append({'obsid': t['obsid'],
+                       'obsdir': obsdir,
+                       'ra': t['ra'],
+                       'dec': t['dec'],
+                       'max_nom_t_ccd': previous_record['max_nom_t_ccd'],
+                       'min_nom_t_ccd': previous_record['min_nom_t_ccd'],
+                       'max_best_t_ccd': previous_record['max_best_t_ccd'],
+                       'min_best_t_ccd': previous_record['min_best_t_ccd'],
+                       })
 
-    report.append({'obsid': t['obsid'],
-                   'obsdir': obsdir,
-                   'ra': t['ra'],
-                   'dec': t['dec'],
-                   'max_nom_t_ccd': np.nanmax(t_ccd_table['nom_t_ccd']),
-                   'min_nom_t_ccd': np.nanmin(t_ccd_table['nom_t_ccd']),
-                   'max_best_t_ccd': np.nanmax(t_ccd_table['best_t_ccd']),
-                   'min_best_t_ccd': np.nanmin(t_ccd_table['best_t_ccd']),
-                   })
 
 report = Table(report)['obsid', 'obsdir', 'ra', 'dec',
                        'max_nom_t_ccd', 'min_nom_t_ccd',
