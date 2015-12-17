@@ -56,6 +56,9 @@ T_CCD_CACHE = {}
 # Star catalog for an attitude (ignores proper motion)
 CAT_CACHE = {}
 
+# Roll independent stars
+RI_CAT_CACHE = {}
+
 
 def get_options():
     import argparse
@@ -132,6 +135,16 @@ def select_stars(ra, dec, roll, cone_stars):
     return CAT_CACHE[id_key], updated_cone_stars
 
 
+def select_ri_stars(ra, dec, cone_stars):
+    id_key = (ra, dec)
+    updated_cone_stars = cone_stars
+    if id_key not in RI_CAT_CACHE:
+        RI_CAT_CACHE[id_key], updated_cone_stars = mini_sausage.select_stars(
+            ra, dec, None, cone_stars, roll_indep=True)
+    return RI_CAT_CACHE[id_key], updated_cone_stars
+
+
+
 def get_t_ccd_roll(ra, dec, y_offset, z_offset, pitch, time, cone_stars):
     """
     Loop over possible roll range for this pitch and return best
@@ -143,6 +156,15 @@ def get_t_ccd_roll(ra, dec, y_offset, z_offset, pitch, time, cone_stars):
     best_n_acq = None
     nom_roll = Ska.Sun.nominal_roll(ra, dec, time=time)
     ra_pnt, dec_pnt = pcad_point(ra, dec, nom_roll, y_offset, z_offset)
+    # if the offsets are both small, so the pointing attitude is relatively roll-independent
+    # check the relatively roll independent circle
+    if abs(y_offset) < .3 and abs(z_offset) < .3:
+        roll_indep_stars = select_ri_stars(ra_pnt, dec_pnt, cone_stars)[0]
+        ri_t_ccd, ri_t_acq = max_temp(time=time, stars=roll_indep_stars)
+        if (ri_t_ccd == WARM_T_CCD):
+            print "Roll indep sol for {}".format(time)
+            nom = (WARM_T_CCD, nom_roll, ri_t_acq, roll_indep_stars)
+            return nom, nom, {nom_roll: ri_t_ccd}, cone_stars
     nom_stars, updated_cone_stars = select_stars(ra_pnt, dec_pnt, nom_roll, cone_stars)
     cone_stars = updated_cone_stars
     nom_t_ccd, nom_n_acq = max_temp(time=time, stars=nom_stars)
@@ -183,6 +205,8 @@ def t_ccd_for_attitude(ra, dec, y_offset=0, z_offset=0, start='2014-09-01', stop
     T_CCD_CACHE.clear()
     global CAT_CACHE
     CAT_CACHE.clear()
+    global RI_CAT_CACHE
+    RI_CAT_CACHE.clear()
 
     start = DateTime(start)
     stop = DateTime(stop)

@@ -256,10 +256,16 @@ def get_mag_errs(cone_stars):
     return magOneSigError, magOneSigError**2
 
 
-def select_stars(ra, dec, roll, cone_stars):
+def select_stars(ra, dec, roll, cone_stars, roll_indep=False):
 
     if 'mag_one_sig_err' not in cone_stars.columns:
         cone_stars['mag_one_sig_err'], cone_stars['mag_one_sig_err2'] = get_mag_errs(cone_stars)
+
+    if roll is None and roll_indep == False:
+        raise ValueError("Roll may only be undefined if roll_indep explicitly True")
+
+    if roll is None:
+        roll = 0
 
     q = Quat((ra, dec, roll))
     yag_deg, zag_deg = radec2yagzag(cone_stars['RA_PMCORR'], cone_stars['DEC_PMCORR'], q)
@@ -277,6 +283,9 @@ def select_stars(ra, dec, roll, cone_stars):
     cone_stars['outofbounds'] = outofbounds
     cone_stars['chip_edge_dist'] = chip_edge_dist
     cone_stars['fov_edge_dist'] = fov_edge_dist
+    if roll_indep:
+        cone_stars['chip_edge_dist'] = 512
+        cone_stars['fov_edge_dist'] = 2500
 
     bad_mag_error = cone_stars['MAG_ACA_ERR'] > acq_char.Acq['Inertial']['MagErrorTol']
     cone_stars['bad_mag_error'] = bad_mag_error
@@ -302,10 +311,13 @@ def select_stars(ra, dec, roll, cone_stars):
     nonstellar = cone_stars['CLASS'] != 0
     cone_stars['nonstellar'] = nonstellar
 
-
-
     not_bad = (~offchip & ~outofbounds & ~bad_mag_error & ~bad_pos_error
                 & ~nonstellar & ~bad_aspq1 & ~bad_aspq2 & ~bad_aspq3 & ~variable)
+
+    if roll_indep:
+        inner_ring = row**2 + col**2 < 480**2
+        not_bad = not_bad & inner_ring
+
 
     # Set some column defaults that will be updated in check_stage
     cone_stars['stage'] = -1
@@ -336,7 +348,6 @@ def select_stars(ra, dec, roll, cone_stars):
     return selected[0:8], cone_stars
 
 
-#return cone_stars[stage1 | stage2 | stage3 | stage4]
 
 
 
