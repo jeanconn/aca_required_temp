@@ -18,6 +18,8 @@ from astropy.table import Table
 from Chandra.Time import DateTime
 from aca_lts_eval import check_update_needed, make_target_report
 
+RELEASE_VERSION = '1.1'
+
 
 def get_options():
     import argparse
@@ -143,6 +145,7 @@ page = template.render(table=report,
                        start=start.fits,
                        stop=stop.fits,
                        gitlabel=gitlabel,
+                       release=RELEASE_VERSION,
                        label='ACA Evaluation of Targets')
 f = open(os.path.join(OUTDIR, 'index.html'), 'w')
 f.write(page)
