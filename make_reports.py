@@ -76,6 +76,7 @@ targets['report_start'] = start.secs
 targets['report_stop'] = stop.secs
 
 last_data_file = os.path.join(OUTDIR, 'target_table.dat')
+last_data = None
 if os.path.exists(last_data_file):
     last_data = Table.read(last_data_file, format='ascii.fixed_width_two_line')
 

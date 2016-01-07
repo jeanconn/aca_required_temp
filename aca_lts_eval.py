@@ -203,11 +203,11 @@ def get_t_ccd_roll(ra, dec, y_offset, z_offset, pitch, time, cone_stars):
                 break
     nom =  (nom_t_ccd, nom_roll, nom_n_acq, nom_stars)
     best = (best_t_ccd, best_roll, best_n_acq, best_stars)
-    return {nomdata: nom,
-            bestdata: best,
-            rolls: all_rolls,
-            cone_stars: updated_cone_stars,
-            roll_indep: False}
+    return {'nomdata': nom,
+            'bestdata': best,
+            'rolls': all_rolls,
+            'cone_stars': updated_cone_stars,
+            'roll_indep': False}
 
 
 def t_ccd_for_attitude(ra, dec, y_offset=0, z_offset=0, start='2014-09-01', stop='2015-12-31', outdir=None):
@@ -282,7 +282,8 @@ def t_ccd_for_attitude(ra, dec, y_offset=0, z_offset=0, start='2014-09-01', stop
                             format="jsviewer")
 
     for tday in temps:
-        if nom_roll in temps[tday]:
+        # If this has already been defined/done for this day, continue
+        if 'nom_roll' in temps[tday]:
             continue
         # If roll independent copy in the value from that solution
         if r_data_check['roll_indep']:
@@ -304,9 +305,9 @@ def t_ccd_for_attitude(ra, dec, y_offset=0, z_offset=0, start='2014-09-01', stop
             temps[tday]['pitch'], time=temps[tday]['day'], cone_stars=cone_stars)
         all_day_rolls = t_ccd_roll_data['rolls']
         all_rolls.update(all_day_rolls)
-        cone_stars = t_ccd_roll_data['updated_cone_stars']
+        cone_stars = t_ccd_roll_data['cone_stars']
         nom_t_ccd, nom_roll, nom_n_acq, nom_stars = t_ccd_roll_data['nomdata']
-        best_t_ccd, best_roll, best_n_acq, best_stars = t_ccd_roll['bestdata']
+        best_t_ccd, best_roll, best_n_acq, best_stars = t_ccd_roll_data['bestdata']
         nom_id_hash = hashlib.md5(np.sort(nom_stars['AGASC_ID'])).hexdigest()
         best_id_hash = hashlib.md5(np.sort(best_stars['AGASC_ID'])).hexdigest()
         if not os.path.exists(os.path.join(outdir, "{}.html".format(nom_id_hash))):
