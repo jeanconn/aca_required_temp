@@ -110,6 +110,8 @@ for t in targets:
                        'obsdir': obsdir,
                        'ra': t['ra'],
                        'dec': t['dec'],
+                       'y_offset': t['y_offset'],
+                       'z_offset': t['z_offset'],
                        'max_nom_t_ccd': np.nanmax(t_ccd_table['nom_t_ccd']),
                        'min_nom_t_ccd': np.nanmin(t_ccd_table['nom_t_ccd']),
                        'max_best_t_ccd': np.nanmax(t_ccd_table['best_t_ccd']),
@@ -123,6 +125,8 @@ for t in targets:
                        'obsdir': obsdir,
                        'ra': t['ra'],
                        'dec': t['dec'],
+                       'y_offset': t['y_offset'],
+                       'z_offset': t['z_offset'],
                        'max_nom_t_ccd': previous_record['max_nom_t_ccd'],
                        'min_nom_t_ccd': previous_record['min_nom_t_ccd'],
                        'max_best_t_ccd': previous_record['max_best_t_ccd'],
@@ -134,7 +138,7 @@ print "Processed {} targets".format(update_cnt)
 print "Skipped {} targets already up-to-date".format(no_update_cnt)
 
 
-report = Table(report)['obsid', 'obsdir', 'ra', 'dec',
+report = Table(report)['obsid', 'obsdir', 'ra', 'dec', 'y_offset', 'z_offset',
                        'max_nom_t_ccd', 'min_nom_t_ccd',
                        'max_best_t_ccd', 'min_best_t_ccd']
 report.sort('min_nom_t_ccd')
@@ -143,6 +147,8 @@ formats = {
     'obsdir': '%s',
     'ra': '%6.3f',
     'dec': '%6.3f',
+    'y_offset': '%5.2f',
+    'z_offset': '%5.2f',
     'max_nom_t_ccd': '%5.2f',
     'min_nom_t_ccd': '%5.2f',
     'max_best_t_ccd': '%5.2f',
