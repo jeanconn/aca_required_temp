@@ -228,6 +228,9 @@ def t_ccd_for_attitude(ra, dec, y_offset=0, z_offset=0, start='2014-09-01', stop
 
     # Get stars in this field
     cone_stars = agasc.get_agasc_cone(ra, dec, radius=1.5, date=lts_mid_time)
+    if len(cone_stars) == 0:
+        raise ValueError("No stars found in 1.5 degree radius of {} {}".format(ra, dec))
+
     # get mag errs once for the field
     cone_stars['mag_one_sig_err'], cone_stars['mag_one_sig_err2'] = mini_sausage.get_mag_errs(cone_stars)
 
