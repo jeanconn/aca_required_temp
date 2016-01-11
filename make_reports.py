@@ -93,7 +93,9 @@ for t in targets:
     if not os.path.exists(obsdir):
         os.makedirs(obsdir)
     redo = check_update_needed(t, obsdir)
-    if redo or last_data is None or t['obsid'] not in last_data['obsid']:
+    # Use "str() not in last_data.astype('str')" because it looks like last_data['obsid']
+    # is sometimes an integer column and sometimes a string column.
+    if redo or last_data is None or str(t['obsid']) not in last_data['obsid'].astype('str'):
         update_cnt += 1
         print "Processing {}".format(t['obsid'])
         t_ccd_table = make_target_report(t['ra'], t['dec'],
