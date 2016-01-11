@@ -82,12 +82,19 @@ if os.path.exists(last_data_file):
 
 report = []
 
+print "{} targets with attitudes and unobserved, partially observed, or untriggered status".format(
+    len(targets))
+
+no_update_cnt = 0
+update_cnt = 0
+
 for t in targets:
     obsdir = os.path.join(OUTDIR, 'obs{:05d}'.format(t['obsid']))
     if not os.path.exists(obsdir):
         os.makedirs(obsdir)
     redo = check_update_needed(t, obsdir)
     if redo or last_data is None or t['obsid'] not in last_data['obsid']:
+        update_cnt += 1
         print "Processing {}".format(t['obsid'])
         t_ccd_table = make_target_report(t['ra'], t['dec'],
                                          t['y_offset'], t['z_offset'],
@@ -108,7 +115,7 @@ for t in targets:
                        })
 
     else:
-        print "Skipping {}; processing current".format(t['obsid'])
+        no_update_cnt += 1
         previous_record = last_data[last_data['obsid'] == t['obsid']]
         report.append({'obsid': t['obsid'],
                        'obsdir': obsdir,
@@ -119,6 +126,10 @@ for t in targets:
                        'max_best_t_ccd': previous_record['max_best_t_ccd'],
                        'min_best_t_ccd': previous_record['min_best_t_ccd'],
                        })
+
+
+print "Processed {} targets".format(update_cnt)
+print "Skipped {} targets already up-to-date".format(no_update_cnt)
 
 
 report = Table(report)['obsid', 'obsdir', 'ra', 'dec',
