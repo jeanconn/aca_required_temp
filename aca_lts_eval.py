@@ -166,7 +166,8 @@ def get_t_ccd_roll(ra, dec, y_offset, z_offset, pitch, time, cone_stars):
                     'bestdata': nom,
                     'rolls': {nom_roll: ri_t_ccd},
                     'cone_stars': cone_stars,
-                    'roll_indep': True}
+                    'roll_indep': True,
+                    'comment': 'roll-independent'}
     nom_stars, updated_cone_stars = select_stars(ra_pnt, dec_pnt, nom_roll, cone_stars)
     cone_stars = updated_cone_stars
     nom_t_ccd, nom_n_acq = max_temp(time=time, stars=nom_stars)
@@ -179,14 +180,15 @@ def get_t_ccd_roll(ra, dec, y_offset, z_offset, pitch, time, cone_stars):
                 'bestdata': best,
                 'rolls': all_rolls,
                 'cone_stars': updated_cone_stars,
-                'roll_indep': False}
-
+                'roll_indep': False,
+                'comment': 'nominal is at max'}
     # check off nominal rolls in allowed range for a better catalog / temperature
     roll_dev = get_rolldev(pitch)
     d_roll = 1.0
     plus_minus_rolls = np.concatenate([[-r, r] for r in
                                        np.arange(d_roll, roll_dev, d_roll)])
     off_nom_rolls = np.round(nom_roll) + plus_minus_rolls
+    best_is_max = False
     for roll in off_nom_rolls:
         ra_pnt, dec_pnt = pcad_point(ra, dec, roll, y_offset, z_offset)
         roll_stars, updated_cone_stars = select_stars(ra_pnt, dec_pnt, roll, cone_stars)
@@ -199,15 +201,21 @@ def get_t_ccd_roll(ra, dec, y_offset, z_offset, pitch, time, cone_stars):
                 best_roll = roll
                 best_stars = roll_stars
                 best_n_acq = roll_n_acq
+                if abs(roll - np.round(nom_roll)) > (roll_dev - d_roll):
+                    best_is_max = True
             if (best_t_ccd == WARM_T_CCD):
                 break
     nom =  (nom_t_ccd, nom_roll, nom_n_acq, nom_stars)
     best = (best_t_ccd, best_roll, best_n_acq, best_stars)
+    comment = ''
+    if best_is_max:
+        comment = 'best roll at max offset'
     return {'nomdata': nom,
             'bestdata': best,
             'rolls': all_rolls,
             'cone_stars': updated_cone_stars,
-            'roll_indep': False}
+            'roll_indep': False,
+            'comment': comment}
 
 
 def t_ccd_for_attitude(ra, dec, y_offset=0, z_offset=0, start='2014-09-01', stop='2015-12-31', outdir=None):
@@ -257,7 +265,8 @@ def t_ccd_for_attitude(ra, dec, y_offset=0, z_offset=0, start='2014-09-01', stop
                 'best_t_ccd': np.nan,
                 'best_n_acq': np.nan,
                 'nom_id_hash': '',
-                'best_id_hash': ''}
+                'best_id_hash': '',
+                'comment': ''}
         else:
             temps["{}".format(day[0:8])] = {
                 'day': day[0:8],
@@ -301,6 +310,7 @@ def t_ccd_for_attitude(ra, dec, y_offset=0, z_offset=0, start='2014-09-01', stop
                 'best_n_acq': best_n_acq,
                 'nom_id_hash': nom_id_hash,
                 'best_id_hash': best_id_hash,
+                'comment': r_data_check['comment'],
                 })
             continue
         t_ccd_roll_data = get_t_ccd_roll(
@@ -328,12 +338,15 @@ def t_ccd_for_attitude(ra, dec, y_offset=0, z_offset=0, start='2014-09-01', stop
                 'best_n_acq': best_n_acq,
                 'nom_id_hash': nom_id_hash,
                 'best_id_hash': best_id_hash,
+                'comment': t_ccd_roll_data['comment']
                 })
 
     t_ccd_table = Table(temps.values())['day', 'caldate', 'pitch',
                                         'nom_roll', 'nom_t_ccd', 'nom_n_acq',
                                         'best_roll', 'best_t_ccd', 'best_n_acq',
                                         'nom_id_hash', 'best_id_hash']
+                                        'nom_id_hash', 'best_id_hash',
+                                        'comment']
     t_ccd_table.sort('day')
     t_ccd_roll = None
     if len(all_rolls) > 0:
@@ -468,13 +481,14 @@ def make_target_report(ra, dec, y_offset, z_offset,
                'best_t_ccd': '%5.2f',
                'best_n_acq': '%i',
                'nom_id_hash': '%s',
-               'best_id_hash': '%s'}
+               'best_id_hash': '%s',
+               'comment': '%s'}
     masked_table = t_ccd_table[~np.isnan(t_ccd_table['nom_t_ccd'])]
     displaycols = masked_table.colnames
     if not debug:
         displaycols = ['day', 'caldate', 'pitch',
                        'nom_roll', 'nom_t_ccd', 'nom_n_acq',
-                       'best_roll', 'best_t_ccd', 'best_n_acq']
+                       'best_roll', 'best_t_ccd', 'best_n_acq', 'comment']
     page = template.render(time_plot=tfig_html,
                            hist_plot='temperature_hist.png',
                            table=masked_table,
