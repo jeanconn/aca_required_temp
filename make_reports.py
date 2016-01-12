@@ -35,6 +35,9 @@ def get_options():
                         help="Start time for roll/temp checks.  Defaults to ~Aug of previous cycle")
     parser.add_argument("--stop",
                         help="Stop time for roll/temp checks.  Default to January end of cycle.")
+    parser.add_argument("--redo",
+                        action='store_true',
+                        help="Redo processing even if complete and up-to-date")
     opt = parser.parse_args()
     return opt
 
@@ -92,7 +95,7 @@ for t in targets:
     obsdir = os.path.join(OUTDIR, 'obs{:05d}'.format(t['obsid']))
     if not os.path.exists(obsdir):
         os.makedirs(obsdir)
-    redo = check_update_needed(t, obsdir)
+    redo = check_update_needed(t, obsdir) or opt.redo
     # Use "str() not in last_data.astype('str')" because it looks like last_data['obsid']
     # is sometimes an integer column and sometimes a string column.
     if redo or last_data is None or str(t['obsid']) not in last_data['obsid'].astype('str'):
