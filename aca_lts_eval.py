@@ -37,7 +37,7 @@ import astropy.units as u
 import acq_char
 import mini_sausage
 
-N_ACQ_STARS = 5
+
 EDGE_DIST = 30
 COLD_T_CCD = -21
 WARM_T_CCD = -10
@@ -260,10 +260,8 @@ def t_ccd_for_attitude(ra, dec, y_offset=0, z_offset=0, start='2014-09-01', stop
                 'pitch': day_pitch,
                 'nom_roll': np.nan,
                 'nom_t_ccd': np.nan,
-                'nom_n_acq': np.nan,
                 'best_roll': np.nan,
                 'best_t_ccd': np.nan,
-                'best_n_acq': np.nan,
                 'nom_id_hash': '',
                 'best_id_hash': '',
                 'comment': ''}
@@ -304,10 +302,8 @@ def t_ccd_for_attitude(ra, dec, y_offset=0, z_offset=0, start='2014-09-01', stop
             temps[tday].update({
                 'nom_roll': nom_roll,
                 'nom_t_ccd': nom_t_ccd,
-                'nom_n_acq': nom_n_acq,
                 'best_roll': best_roll,
                 'best_t_ccd': best_t_ccd,
-                'best_n_acq': best_n_acq,
                 'nom_id_hash': nom_id_hash,
                 'best_id_hash': best_id_hash,
                 'comment': r_data_check['comment'],
@@ -332,19 +328,15 @@ def t_ccd_for_attitude(ra, dec, y_offset=0, z_offset=0, start='2014-09-01', stop
         temps[tday].update({
                 'nom_roll': nom_roll,
                 'nom_t_ccd': nom_t_ccd,
-                'nom_n_acq': nom_n_acq,
                 'best_roll': best_roll,
                 'best_t_ccd': best_t_ccd,
-                'best_n_acq': best_n_acq,
                 'nom_id_hash': nom_id_hash,
                 'best_id_hash': best_id_hash,
                 'comment': t_ccd_roll_data['comment']
                 })
-
     t_ccd_table = Table(temps.values())['day', 'caldate', 'pitch',
-                                        'nom_roll', 'nom_t_ccd', 'nom_n_acq',
-                                        'best_roll', 'best_t_ccd', 'best_n_acq',
-                                        'nom_id_hash', 'best_id_hash']
+                                        'nom_roll', 'nom_t_ccd',
+                                        'best_roll', 'best_t_ccd',
                                         'nom_id_hash', 'best_id_hash',
                                         'comment']
     t_ccd_table.sort('day')
@@ -476,10 +468,8 @@ def make_target_report(ra, dec, y_offset, z_offset,
                'pitch': '%5.2f',
                'nom_roll': '%5.2f',
                'nom_t_ccd': '%5.2f',
-               'nom_n_acq': '%i',
                'best_roll': '%5.2f',
                'best_t_ccd': '%5.2f',
-               'best_n_acq': '%i',
                'nom_id_hash': '%s',
                'best_id_hash': '%s',
                'comment': '%s'}
@@ -487,8 +477,8 @@ def make_target_report(ra, dec, y_offset, z_offset,
     displaycols = masked_table.colnames
     if not debug:
         displaycols = ['day', 'caldate', 'pitch',
-                       'nom_roll', 'nom_t_ccd', 'nom_n_acq',
-                       'best_roll', 'best_t_ccd', 'best_n_acq', 'comment']
+                       'nom_roll', 'nom_t_ccd',
+                       'best_roll', 'best_t_ccd', 'comment']
     page = template.render(time_plot=tfig_html,
                            hist_plot='temperature_hist.png',
                            table=masked_table,
