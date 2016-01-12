@@ -18,7 +18,7 @@ from astropy.table import Table
 from Chandra.Time import DateTime
 from aca_lts_eval import check_update_needed, make_target_report
 
-RELEASE_VERSION = '1.1'
+RELEASE_VERSION = '1.2'
 
 
 def get_options():
