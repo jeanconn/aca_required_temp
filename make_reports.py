@@ -123,7 +123,7 @@ for t in targets:
 
     else:
         no_update_cnt += 1
-        previous_record = last_data[last_data['obsid'] == t['obsid']]
+        previous_record = last_data[last_data['obsid'] == t['obsid']][0]
         report.append({'obsid': t['obsid'],
                        'obsdir': obsdir,
                        'ra': t['ra'],
