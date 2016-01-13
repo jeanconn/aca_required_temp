@@ -168,7 +168,7 @@ del report['obsdir']
 shutil.copy(os.path.join(TASK_DATA, 'sorttable.js'), OUTDIR)
 
 try:
-    gitlabel = subprocess.check_output(['git', 'describe', '--always'])
+    gitlabel = subprocess.check_output(['git', 'describe', '--always'], stderr=subprocess.PIPE)
 except:
     gitlabel = open(os.path.join(TASK_DATA, 'VERSION')).read().strip()
 
