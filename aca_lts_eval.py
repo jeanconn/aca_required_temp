@@ -64,11 +64,13 @@ def get_options():
     import argparse
     parser = argparse.ArgumentParser(
         description="Make report of required ACA temperatures for a target over a time range.")
-    parser.add_argument("ra",
+    parser.add_argument("--ra",
                         type=float,
+                        required=True,
                         help="Target RA in degrees")
-    parser.add_argument("dec",
+    parser.add_argument("--dec",
                         type=float,
+                        required=True,
                         help="Target Dec in degrees")
     parser.add_argument("--y_offset",
                         type=float,
