@@ -90,7 +90,7 @@ def get_options():
                         default="2016-12-31",
                         help="Stop time for evaluation of temperatures.  Default 2016-12-31")
     parser.add_argument("--obsid",
-                        help="Obsid for html report")
+                        help="Obsid for html report.  Just a label; not used to do a database lookup for parameters.")
     parser.add_argument("--debug",
                         action="store_true")
     opt = parser.parse_args()
