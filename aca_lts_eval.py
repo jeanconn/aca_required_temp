@@ -453,7 +453,8 @@ def make_target_report(ra, dec, y_offset, z_offset,
     #html_table[1] = re.sub('<th>caldate</th>',
     #                       '<th class="sorttable_nosort">caldate</th>',
     #                       html_table[1])
-    shutil.copy(os.path.join(TASK_DATA, 'sorttable.js'), obsdir)
+    if not os.path.exists(os.path.join(obsdir, 'sorttable.js')):
+        shutil.copy(os.path.join(TASK_DATA, 'sorttable.js'), obsdir)
 
     jinja_env = jinja2.Environment(
         loader=jinja2.FileSystemLoader(os.path.join(TASK_DATA, 'templates')))

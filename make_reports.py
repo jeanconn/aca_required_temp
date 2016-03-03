@@ -165,7 +165,8 @@ report.write(os.path.join(OUTDIR, "target_table.dat"),
 del report['obsdir']
 
 
-shutil.copy(os.path.join(TASK_DATA, 'sorttable.js'), OUTDIR)
+if not os.path.exists(os.path.join(OUTDIR, 'sorttable.js')):
+    shutil.copy(os.path.join(TASK_DATA, 'sorttable.js'), OUTDIR)
 
 try:
     gitlabel = subprocess.check_output(['git', 'describe', '--always'], stderr=subprocess.PIPE)
