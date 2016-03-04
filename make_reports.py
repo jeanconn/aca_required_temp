@@ -57,7 +57,7 @@ t.y_det_offset as y_offset, t.z_det_offset as z_offset,
 t.approved_exposure_time, t.instrument, t.grating, t.obs_ao_str
 FROM target t
 WHERE
-((t.status='unobserved' OR t.status='partially observed' OR t.status='untriggered')
+((t.status='unobserved' OR t.status='partially observed' OR t.status='untriggered' OR t.status='scheduled')
 AND NOT(t.ra = 0 AND t.dec = 0)
 AND NOT(t.ra IS NULL OR t.dec IS NULL)
 AND (t.obs_ao_str <= '{}'))
