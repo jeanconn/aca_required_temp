@@ -30,7 +30,7 @@ import Ska.Sun
 from Ska.quatutil import radec2yagzag
 from Quaternion import Quat
 import chandra_aca
-from chandra_aca.star_probs import t_ccd_warm_limit
+from chandra_aca.star_probs import t_ccd_warm_limit, set_acq_model_ms_filter
 from astropy.table import Table
 from astropy.coordinates import SkyCoord, search_around_sky
 import astropy.units as u
@@ -41,6 +41,8 @@ import mini_sausage
 EDGE_DIST = 30
 COLD_T_CCD = -21
 WARM_T_CCD = -10
+# explicitly disable MS filter
+set_acq_model_ms_filter(ms_enabled=False)
 
 ODB_SI_ALIGN  = np.array([[1.0, 3.3742E-4, 2.7344E-4],
                              [-3.3742E-4, 1.0, 0.0],
