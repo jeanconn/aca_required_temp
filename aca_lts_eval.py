@@ -277,23 +277,25 @@ def t_ccd_for_attitude(ra, dec, y_offset=0, z_offset=0, start='2014-09-01', stop
             last_good_day = day
             last_good_pitch = day_pitch
 
-    # Run the temperature thing once to see if this might be good for all rolls
-    r_data_check = get_t_ccd_roll(
-        ra, dec, y_offset, z_offset,
-        last_good_pitch, time=last_good_day, cone_stars=cone_stars)
 
-    # If it is roll independent, write out the star hashes here
-    if r_data_check['roll_indep']:
-        nom_t_ccd, nom_roll, nom_n_acq, nom_stars = r_data_check['nomdata']
-        best_t_ccd, best_roll, best_n_acq, best_stars = r_data_check['bestdata']
-        nom_id_hash = hashlib.md5(np.sort(nom_stars['AGASC_ID'])).hexdigest()
-        best_id_hash = hashlib.md5(np.sort(best_stars['AGASC_ID'])).hexdigest()
-        if not os.path.exists(os.path.join(outdir, "{}.html".format(nom_id_hash))):
-            nom_stars.write(os.path.join(outdir, "{}.html".format(nom_id_hash)),
-                            format="jsviewer")
-        if not os.path.exists(os.path.join(outdir, "{}.html".format(best_id_hash))):
-            best_stars.write(os.path.join(outdir, "{}.html".format(best_id_hash)),
-                            format="jsviewer")
+    if last_good_day is not None:
+        # Run the temperature thing once to see if this might be good for all rolls
+        r_data_check = get_t_ccd_roll(
+            ra, dec, y_offset, z_offset,
+            last_good_pitch, time=last_good_day, cone_stars=cone_stars)
+
+        # If it is roll independent, write out the star hashes here
+        if r_data_check['roll_indep']:
+            nom_t_ccd, nom_roll, nom_n_acq, nom_stars = r_data_check['nomdata']
+            best_t_ccd, best_roll, best_n_acq, best_stars = r_data_check['bestdata']
+            nom_id_hash = hashlib.md5(np.sort(nom_stars['AGASC_ID'])).hexdigest()
+            best_id_hash = hashlib.md5(np.sort(best_stars['AGASC_ID'])).hexdigest()
+            if not os.path.exists(os.path.join(outdir, "{}.html".format(nom_id_hash))):
+                nom_stars.write(os.path.join(outdir, "{}.html".format(nom_id_hash)),
+                                format="jsviewer")
+            if not os.path.exists(os.path.join(outdir, "{}.html".format(best_id_hash))):
+                best_stars.write(os.path.join(outdir, "{}.html".format(best_id_hash)),
+                                format="jsviewer")
 
     for tday in temps:
         # If this has already been defined/done for this day, continue
