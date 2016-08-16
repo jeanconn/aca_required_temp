@@ -28,13 +28,13 @@ def get_options():
     parser.add_argument("--out",
                        default="out")
     parser.add_argument("--cycle",
-                        default=17)
+                        default=18)
     parser.add_argument("--planning-limit",
                         default=-14)
     parser.add_argument("--start",
                         help="Start time for roll/temp checks.  Defaults to ~Aug of previous cycle")
     parser.add_argument("--stop",
-                        help="Stop time for roll/temp checks.  Default to January end of cycle.")
+                        help="Stop time for roll/temp checks.  Default to March past end of cycle.")
     parser.add_argument("--redo",
                         action='store_true',
                         help="Redo processing even if complete and up-to-date")
@@ -67,8 +67,8 @@ targets.write(os.path.join(OUTDIR, 'requested_targets.txt'),
               format='ascii.fixed_width_two_line')
 
 
-stop = DateTime('{}-01-01'.format(2000 + CYCLE))
-start = stop - (365 + 120)
+stop = DateTime('{}-03-15'.format(2000 + CYCLE))
+start = stop - (365 + 210)
 if opt.start is not None:
     start = DateTime(opt.start)
 if opt.stop is not None:
