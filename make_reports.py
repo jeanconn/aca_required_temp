@@ -47,7 +47,7 @@ OUTDIR = opt.out
 if not os.path.exists(OUTDIR):
     os.makedirs(OUTDIR)
 CYCLE = opt.cycle
-LABEL = 'Outstanding Targets for AO{}'.format(CYCLE)
+LABEL = 'Outstanding Targets'
 PLANNING_LIMIT = opt.planning_limit
 TASK_DATA = os.path.join(os.environ['SKA'], 'data', 'aca_lts_eval')
 
@@ -59,9 +59,8 @@ FROM target t
 WHERE
 ((t.status='unobserved' OR t.status='partially observed' OR t.status='untriggered' OR t.status='scheduled')
 AND NOT(t.ra = 0 AND t.dec = 0)
-AND NOT(t.ra IS NULL OR t.dec IS NULL)
-AND (t.obs_ao_str <= '{}'))
-ORDER BY t.obsid""".format(CYCLE)
+AND NOT(t.ra IS NULL OR t.dec IS NULL))
+ORDER BY t.obsid"""
 
 targets = Table(db.fetchall(query))
 targets.write(os.path.join(OUTDIR, 'requested_targets.txt'),
