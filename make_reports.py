@@ -18,7 +18,7 @@ from astropy.table import Table
 from Chandra.Time import DateTime
 from aca_lts_eval import check_update_needed, make_target_report
 
-RELEASE_VERSION = '1.3.0'
+RELEASE_VERSION = '1.4.0'
 
 
 def get_options():
@@ -28,13 +28,13 @@ def get_options():
     parser.add_argument("--out",
                        default="out")
     parser.add_argument("--cycle",
-                        default=17)
+                        default=18)
     parser.add_argument("--planning-limit",
-                        default=-14)
+                        default=-12.5)
     parser.add_argument("--start",
                         help="Start time for roll/temp checks.  Defaults to ~Aug of previous cycle")
     parser.add_argument("--stop",
-                        help="Stop time for roll/temp checks.  Default to January end of cycle.")
+                        help="Stop time for roll/temp checks.  Default to March past end of cycle.")
     parser.add_argument("--redo",
                         action='store_true',
                         help="Redo processing even if complete and up-to-date")
@@ -47,7 +47,7 @@ OUTDIR = opt.out
 if not os.path.exists(OUTDIR):
     os.makedirs(OUTDIR)
 CYCLE = opt.cycle
-LABEL = 'Outstanding Targets for AO{}'.format(CYCLE)
+LABEL = 'Outstanding Targets'
 PLANNING_LIMIT = opt.planning_limit
 TASK_DATA = os.path.join(os.environ['SKA'], 'data', 'aca_lts_eval')
 
@@ -59,17 +59,16 @@ FROM target t
 WHERE
 ((t.status='unobserved' OR t.status='partially observed' OR t.status='untriggered' OR t.status='scheduled')
 AND NOT(t.ra = 0 AND t.dec = 0)
-AND NOT(t.ra IS NULL OR t.dec IS NULL)
-AND (t.obs_ao_str <= '{}'))
-ORDER BY t.obsid""".format(CYCLE)
+AND NOT(t.ra IS NULL OR t.dec IS NULL))
+ORDER BY t.obsid"""
 
 targets = Table(db.fetchall(query))
 targets.write(os.path.join(OUTDIR, 'requested_targets.txt'),
               format='ascii.fixed_width_two_line')
 
 
-stop = DateTime('{}-01-01'.format(2000 + CYCLE))
-start = stop - (365 + 120)
+stop = DateTime('{}-03-15'.format(2000 + CYCLE))
+start = stop - (365 + 210)
 if opt.start is not None:
     start = DateTime(opt.start)
 if opt.stop is not None:
