@@ -53,9 +53,10 @@ TASK_DATA = os.path.join(os.environ['SKA'], 'data', 'aca_lts_eval')
 
 db = DBI(dbi='sybase', server='sqlsao', database='axafocat', user='aca_ops')
 query = """SELECT t.obsid, t.ra, t.dec,
-t.y_det_offset as y_offset, t.z_det_offset as z_offset,
-t.approved_exposure_time, t.instrument, t.grating, t.obs_ao_str
+t.type, t.y_det_offset as y_offset, t.z_det_offset as z_offset, 
+t.approved_exposure_time, t.instrument, t.grating, t.obs_ao_str, p.ao_str
 FROM target t
+right join prop_info p on t.ocat_propid = p.ocat_propid
 WHERE
 ((t.status='unobserved' OR t.status='partially observed' OR t.status='untriggered' OR t.status='scheduled')
 AND NOT(t.ra = 0 AND t.dec = 0)
@@ -101,6 +102,9 @@ for t in targets:
         update_cnt += 1
         print "Processing {}".format(t['obsid'])
         t_ccd_table = make_target_report(t['ra'], t['dec'],
+                                         int(t['ao_str']),
+                                         t['instrument'],
+                                         (t['type'] == 'DDT') or (t['type'] == 'TOO'),
                                          t['y_offset'], t['z_offset'],
                                          start=start,
                                          stop=stop,
