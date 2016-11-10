@@ -64,6 +64,8 @@ AND NOT(t.ra IS NULL OR t.dec IS NULL))
 ORDER BY t.obsid"""
 
 targets = Table(db.fetchall(query))
+db.conn.close()
+del db
 targets.write(os.path.join(OUTDIR, 'requested_targets.txt'),
               format='ascii.fixed_width_two_line')
 
