@@ -126,15 +126,6 @@ def get_rolldev(pitch):
     return ROLL_TABLE['rolldev'][idx - 1]
 
 
-def pcad_point(ra, dec, roll, y_offset, z_offset):
-    # offsets are in arcmin, convert to degrees
-    offset = Quat([y_offset / 60., z_offset / 60., 0])
-    q_targ = Quat([ra, dec, roll])
-    q_hrma = q_targ * offset.inv()
-    q_pnt = Quat(np.dot(q_hrma.transform, ODB_SI_ALIGN))
-    return q_pnt.ra, q_pnt.dec
-
-
 def select_stars(ra, dec, roll, cone_stars):
     id_key = (ra, dec, roll)
     updated_cone_stars = cone_stars
