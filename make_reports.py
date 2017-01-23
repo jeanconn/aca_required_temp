@@ -5,21 +5,19 @@ import numpy as np
 import jinja2
 import matplotlib
 import subprocess
-if __name__ == '__main__':
-    matplotlib.use('Agg')
+from Ska.DBI import DBI
+from astropy.table import Table
+from Chandra.Time import DateTime
+from aca_lts_eval import check_update_needed, make_target_report
+
 import warnings
 # Ignore known numexpr.necompiler and table.conditions warning
 warnings.filterwarnings(
     'ignore',
     message="using `oa_ndim == 0` when `op_axes` is NULL is deprecated.*",
     category=DeprecationWarning)
-from Ska.DBI import DBI
-from astropy.table import Table
-from Chandra.Time import DateTime
-from aca_lts_eval import check_update_needed, make_target_report
 
 RELEASE_VERSION = '1.4.0'
-
 
 def get_options():
     import argparse
