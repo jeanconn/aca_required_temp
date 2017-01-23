@@ -38,6 +38,9 @@ def get_options():
     parser.add_argument("--redo",
                         action='store_true',
                         help="Redo processing even if complete and up-to-date")
+    parser.add_argument("--incremental",
+                       action='store_true',
+                       help="Write out table as processed (good for recovery of long processing)")
     opt = parser.parse_args()
     return opt
 
@@ -142,32 +145,29 @@ for t in targets:
                        })
 
 
+    if opt.incremental:
+        # Write out the text file on every loop/target if incremental option set
+        report_table = Table(report)['obsid', 'obsdir', 'ra', 'dec', 'y_offset', 'z_offset',
+                                     'max_nom_t_ccd', 'min_nom_t_ccd',
+                                     'max_best_t_ccd', 'min_best_t_ccd']
+        report_table.sort('min_nom_t_ccd')
+        report_table.write(os.path.join(OUTDIR, "target_table.dat"),
+                           format="ascii.fixed_width_two_line")
+
+
+report_table = Table(report)['obsid', 'obsdir', 'ra', 'dec', 'y_offset', 'z_offset',
+                             'max_nom_t_ccd', 'min_nom_t_ccd',
+                             'max_best_t_ccd', 'min_best_t_ccd']
+report_table.sort('min_nom_t_ccd')
+report_table.write(os.path.join(OUTDIR, "target_table.dat"),
+                   format="ascii.fixed_width_two_line")
+
 print "Processed {} targets".format(update_cnt)
 print "Skipped {} targets already up-to-date".format(no_update_cnt)
 
 
-report = Table(report)['obsid', 'obsdir', 'ra', 'dec', 'y_offset', 'z_offset',
-                       'max_nom_t_ccd', 'min_nom_t_ccd',
-                       'max_best_t_ccd', 'min_best_t_ccd']
-report.sort('min_nom_t_ccd')
-formats = {
-    'obsid': '%i',
-    'obsdir': '%s',
-    'ra': '%6.3f',
-    'dec': '%6.3f',
-    'y_offset': '%5.2f',
-    'z_offset': '%5.2f',
-    'max_nom_t_ccd': '%5.2f',
-    'min_nom_t_ccd': '%5.2f',
-    'max_best_t_ccd': '%5.2f',
-    'min_best_t_ccd': '%5.2f'}
-
-
-report.write(os.path.join(OUTDIR, "target_table.dat"),
-             format="ascii.fixed_width_two_line")
-
 # remove obsdir from the web version of the report
-del report['obsdir']
+del report_table['obsdir']
 
 
 if not os.path.exists(os.path.join(OUTDIR, 'sorttable.js')):
@@ -183,7 +183,18 @@ jinja_env = jinja2.Environment(
 jinja_env.line_comment_prefix = '##'
 jinja_env.line_statement_prefix = '#'
 template = jinja_env.get_template('toptable.html')
-page = template.render(table=report,
+formats = {
+    'obsid': '%i',
+    'obsdir': '%s',
+    'ra': '%6.3f',
+    'dec': '%6.3f',
+    'y_offset': '%5.2f',
+    'z_offset': '%5.2f',
+    'max_nom_t_ccd': '%5.2f',
+    'min_nom_t_ccd': '%5.2f',
+    'max_best_t_ccd': '%5.2f',
+    'min_best_t_ccd': '%5.2f'}
+page = template.render(table=report_table,
                        formats=formats,
                        planning_limit=PLANNING_LIMIT,
                        start=start.fits,
