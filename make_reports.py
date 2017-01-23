@@ -5,21 +5,19 @@ import numpy as np
 import jinja2
 import matplotlib
 import subprocess
-if __name__ == '__main__':
-    matplotlib.use('Agg')
+from Ska.DBI import DBI
+from astropy.table import Table
+from Chandra.Time import DateTime
+from aca_lts_eval import check_update_needed, make_target_report
+
 import warnings
 # Ignore known numexpr.necompiler and table.conditions warning
 warnings.filterwarnings(
     'ignore',
     message="using `oa_ndim == 0` when `op_axes` is NULL is deprecated.*",
     category=DeprecationWarning)
-from Ska.DBI import DBI
-from astropy.table import Table
-from Chandra.Time import DateTime
-from aca_lts_eval import check_update_needed, make_target_report
 
-RELEASE_VERSION = '1.4.0'
-
+RELEASE_VERSION = '1.5.0'
 
 def get_options():
     import argparse
@@ -30,7 +28,7 @@ def get_options():
     parser.add_argument("--cycle",
                         default=18)
     parser.add_argument("--planning-limit",
-                        default=-12.5)
+                        default=-11.5)
     parser.add_argument("--start",
                         help="Start time for roll/temp checks.  Defaults to ~Aug of previous cycle")
     parser.add_argument("--stop",
@@ -38,6 +36,9 @@ def get_options():
     parser.add_argument("--redo",
                         action='store_true',
                         help="Redo processing even if complete and up-to-date")
+    parser.add_argument("--incremental",
+                       action='store_true',
+                       help="Write out table as processed (good for recovery of long processing)")
     opt = parser.parse_args()
     return opt
 
@@ -53,9 +54,10 @@ TASK_DATA = os.path.join(os.environ['SKA'], 'data', 'aca_lts_eval')
 
 db = DBI(dbi='sybase', server='sqlsao', database='axafocat', user='aca_ops')
 query = """SELECT t.obsid, t.ra, t.dec,
-t.y_det_offset as y_offset, t.z_det_offset as z_offset,
-t.approved_exposure_time, t.instrument, t.grating, t.obs_ao_str
+t.type, t.y_det_offset as y_offset, t.z_det_offset as z_offset, 
+t.approved_exposure_time, t.instrument, t.grating, t.obs_ao_str, p.ao_str
 FROM target t
+right join prop_info p on t.ocat_propid = p.ocat_propid
 WHERE
 ((t.status='unobserved' OR t.status='partially observed' OR t.status='untriggered' OR t.status='scheduled')
 AND NOT(t.ra = 0 AND t.dec = 0)
@@ -63,6 +65,8 @@ AND NOT(t.ra IS NULL OR t.dec IS NULL))
 ORDER BY t.obsid"""
 
 targets = Table(db.fetchall(query))
+db.conn.close()
+del db
 targets.write(os.path.join(OUTDIR, 'requested_targets.txt'),
               format='ascii.fixed_width_two_line')
 
@@ -101,6 +105,9 @@ for t in targets:
         update_cnt += 1
         print "Processing {}".format(t['obsid'])
         t_ccd_table = make_target_report(t['ra'], t['dec'],
+                                         int(t['ao_str']),
+                                         t['instrument'],
+                                         (t['type'] == 'DDT') or (t['type'] == 'TOO'),
                                          t['y_offset'], t['z_offset'],
                                          start=start,
                                          stop=stop,
@@ -136,32 +143,29 @@ for t in targets:
                        })
 
 
+    if opt.incremental:
+        # Write out the text file on every loop/target if incremental option set
+        report_table = Table(report)['obsid', 'obsdir', 'ra', 'dec', 'y_offset', 'z_offset',
+                                     'max_nom_t_ccd', 'min_nom_t_ccd',
+                                     'max_best_t_ccd', 'min_best_t_ccd']
+        report_table.sort('min_nom_t_ccd')
+        report_table.write(os.path.join(OUTDIR, "target_table.dat"),
+                           format="ascii.fixed_width_two_line")
+
+
+report_table = Table(report)['obsid', 'obsdir', 'ra', 'dec', 'y_offset', 'z_offset',
+                             'max_nom_t_ccd', 'min_nom_t_ccd',
+                             'max_best_t_ccd', 'min_best_t_ccd']
+report_table.sort('min_nom_t_ccd')
+report_table.write(os.path.join(OUTDIR, "target_table.dat"),
+                   format="ascii.fixed_width_two_line")
+
 print "Processed {} targets".format(update_cnt)
 print "Skipped {} targets already up-to-date".format(no_update_cnt)
 
 
-report = Table(report)['obsid', 'obsdir', 'ra', 'dec', 'y_offset', 'z_offset',
-                       'max_nom_t_ccd', 'min_nom_t_ccd',
-                       'max_best_t_ccd', 'min_best_t_ccd']
-report.sort('min_nom_t_ccd')
-formats = {
-    'obsid': '%i',
-    'obsdir': '%s',
-    'ra': '%6.3f',
-    'dec': '%6.3f',
-    'y_offset': '%5.2f',
-    'z_offset': '%5.2f',
-    'max_nom_t_ccd': '%5.2f',
-    'min_nom_t_ccd': '%5.2f',
-    'max_best_t_ccd': '%5.2f',
-    'min_best_t_ccd': '%5.2f'}
-
-
-report.write(os.path.join(OUTDIR, "target_table.dat"),
-             format="ascii.fixed_width_two_line")
-
 # remove obsdir from the web version of the report
-del report['obsdir']
+del report_table['obsdir']
 
 
 if not os.path.exists(os.path.join(OUTDIR, 'sorttable.js')):
@@ -177,7 +181,18 @@ jinja_env = jinja2.Environment(
 jinja_env.line_comment_prefix = '##'
 jinja_env.line_statement_prefix = '#'
 template = jinja_env.get_template('toptable.html')
-page = template.render(table=report,
+formats = {
+    'obsid': '%i',
+    'obsdir': '%s',
+    'ra': '%6.3f',
+    'dec': '%6.3f',
+    'y_offset': '%5.2f',
+    'z_offset': '%5.2f',
+    'max_nom_t_ccd': '%5.2f',
+    'min_nom_t_ccd': '%5.2f',
+    'max_best_t_ccd': '%5.2f',
+    'min_best_t_ccd': '%5.2f'}
+page = template.render(table=report_table,
                        formats=formats,
                        planning_limit=PLANNING_LIMIT,
                        start=start.fits,

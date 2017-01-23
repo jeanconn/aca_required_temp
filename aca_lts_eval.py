@@ -30,7 +30,9 @@ import Ska.Sun
 from Ska.quatutil import radec2yagzag
 from Quaternion import Quat
 import chandra_aca
+from chandra_aca import calc_aca_from_targ
 from chandra_aca.star_probs import t_ccd_warm_limit, set_acq_model_ms_filter
+from chandra_aca.drift import get_aca_offsets, get_target_aimpoint
 from astropy.table import Table
 from astropy.coordinates import SkyCoord, search_around_sky
 import astropy.units as u
@@ -38,15 +40,12 @@ import acq_char
 import mini_sausage
 
 
+PLANNING_LIMIT = -11.5
 EDGE_DIST = 30
 COLD_T_CCD = -21
 WARM_T_CCD = -7
 # explicitly disable MS filter
 set_acq_model_ms_filter(ms_enabled=False)
-
-ODB_SI_ALIGN  = np.array([[1.0, 3.3742E-4, 2.7344E-4],
-                             [-3.3742E-4, 1.0, 0.0],
-                             [-2.7344E-4, 0.0, 1.0]])
 
 TASK_DATA = os.path.join(os.environ['SKA'], 'data', 'aca_lts_eval')
 ROLL_TABLE = Table.read(os.path.join(TASK_DATA, 'roll_limits.dat'), format='ascii')
@@ -74,6 +73,12 @@ def get_options():
                         type=float,
                         required=True,
                         help="Target Dec in degrees")
+    parser.add_argument("--cycle",
+                        help="Observation proposal cycle")
+    parser.add_argument("--detector",
+                        help="SI one of ACIS-I, ACIS-S, HRC-I, or HRC-S")
+    parser.add_argument("--too",
+                        action="store_true")
     parser.add_argument("--y_offset",
                         type=float,
                         default=0.0,
@@ -121,15 +126,6 @@ def get_rolldev(pitch):
     return ROLL_TABLE['rolldev'][idx - 1]
 
 
-def pcad_point(ra, dec, roll, y_offset, z_offset):
-    # offsets are in arcmin, convert to degrees
-    offset = Quat([y_offset / 60., z_offset / 60., 0])
-    q_targ = Quat([ra, dec, roll])
-    q_hrma = q_targ * offset.inv()
-    q_pnt = Quat(np.dot(q_hrma.transform, ODB_SI_ALIGN))
-    return q_pnt.ra, q_pnt.dec
-
-
 def select_stars(ra, dec, roll, cone_stars):
     id_key = (ra, dec, roll)
     updated_cone_stars = cone_stars
@@ -148,7 +144,7 @@ def select_ri_stars(ra, dec, cone_stars):
     return RI_CAT_CACHE[id_key], updated_cone_stars
 
 
-def get_t_ccd_roll(ra, dec, y_offset, z_offset, pitch, time, cone_stars):
+def get_t_ccd_roll(ra, dec, cycle, detector, too, y_offset, z_offset, pitch, time, cone_stars):
     """
     Loop over possible roll range for this pitch and return best
     and nominal temperature/roll combinations
@@ -158,7 +154,16 @@ def get_t_ccd_roll(ra, dec, y_offset, z_offset, pitch, time, cone_stars):
     best_stars = None
     best_n_acq = None
     nom_roll = Ska.Sun.nominal_roll(ra, dec, time=time)
-    ra_pnt, dec_pnt = pcad_point(ra, dec, nom_roll, y_offset, z_offset)
+    chipx, chipy, chip_id = get_target_aimpoint(time, cycle, detector, too)
+    aca_offset_y, aca_offset_z = get_aca_offsets(
+        detector, chip_id, chipx, chipy, time, PLANNING_LIMIT - 2)
+    # note that calc_aca_from_targ expects target offsets in degrees and the target table has them
+    #  in arcmin
+    q_pnt = calc_aca_from_targ((ra, dec, nom_roll),
+                               (y_offset / 60.) + (aca_offset_y / 3600.),
+                               (z_offset / 60.) + (aca_offset_z / 3600.))
+    ra_pnt = q_pnt.ra
+    dec_pnt = q_pnt.dec
     # if the offsets are both small, so the pointing attitude is relatively roll-independent
     # check the relatively roll independent circle
     if abs(y_offset) < .3 and abs(z_offset) < .3:
@@ -194,7 +199,11 @@ def get_t_ccd_roll(ra, dec, y_offset, z_offset, pitch, time, cone_stars):
     off_nom_rolls = np.round(nom_roll) + plus_minus_rolls
     best_is_max = False
     for roll in off_nom_rolls:
-        ra_pnt, dec_pnt = pcad_point(ra, dec, roll, y_offset, z_offset)
+        q_pnt = calc_aca_from_targ((ra, dec, roll),
+                                   (y_offset / 60.) + (aca_offset_y / 3600.),
+                                   (z_offset / 60.) + (aca_offset_z / 3600.))
+        ra_pnt = q_pnt.ra
+        dec_pnt = q_pnt.dec
         roll_stars, updated_cone_stars = select_stars(ra_pnt, dec_pnt, roll, cone_stars)
         cone_stars = updated_cone_stars
         roll_t_ccd, roll_n_acq = max_temp(time=time, stars=roll_stars)
@@ -222,7 +231,8 @@ def get_t_ccd_roll(ra, dec, y_offset, z_offset, pitch, time, cone_stars):
             'comment': comment}
 
 
-def t_ccd_for_attitude(ra, dec, y_offset=0, z_offset=0, start='2014-09-01', stop='2015-12-31', outdir=None):
+def t_ccd_for_attitude(ra, dec, cycle, detector, too, y_offset=0, z_offset=0,
+                       start='2014-09-01', stop='2015-12-31', outdir=None):
     # reset the caches at every new attitude
     global T_CCD_CACHE
     T_CCD_CACHE.clear()
@@ -239,9 +249,10 @@ def t_ccd_for_attitude(ra, dec, y_offset=0, z_offset=0, start='2014-09-01', stop
     lts_mid_time = start + (stop - start) / 2
 
     # Get stars in this field
-    cone_stars = agasc.get_agasc_cone(ra, dec, radius=1.5, date=lts_mid_time)
+    print "fetching stars a {} {}".format(ra, dec)
+    cone_stars = agasc.get_agasc_cone(ra, dec, radius=3, date=lts_mid_time)
     if len(cone_stars) == 0:
-        raise ValueError("No stars found in 1.5 degree radius of {} {}".format(ra, dec))
+        raise ValueError("No stars found in 3 degree radius of {} {}".format(ra, dec))
 
     # get mag errs once for the field
     cone_stars['mag_one_sig_err'], cone_stars['mag_one_sig_err2'] = mini_sausage.get_mag_errs(cone_stars)
@@ -281,7 +292,7 @@ def t_ccd_for_attitude(ra, dec, y_offset=0, z_offset=0, start='2014-09-01', stop
     if last_good_day is not None:
         # Run the temperature thing once to see if this might be good for all rolls
         r_data_check = get_t_ccd_roll(
-            ra, dec, y_offset, z_offset,
+            ra, dec, cycle, detector, too, y_offset, z_offset,
             last_good_pitch, time=last_good_day, cone_stars=cone_stars)
 
         # If it is roll independent, write out the star hashes here
@@ -316,7 +327,7 @@ def t_ccd_for_attitude(ra, dec, y_offset=0, z_offset=0, start='2014-09-01', stop
                 })
             continue
         t_ccd_roll_data = get_t_ccd_roll(
-            ra, dec, y_offset, z_offset,
+            ra, dec, cycle, detector, too, y_offset, z_offset,
             temps[tday]['pitch'], time=temps[tday]['day'], cone_stars=cone_stars)
         all_day_rolls = t_ccd_roll_data['rolls']
         all_rolls.update(all_day_rolls)
@@ -410,7 +421,7 @@ def check_update_needed(target, obsdir):
     return False
 
 
-def make_target_report(ra, dec, y_offset, z_offset,
+def make_target_report(ra, dec, cycle, detector, too, y_offset, z_offset,
                        start, stop, obsdir, obsid=None, debug=False, redo=True):
     if not os.path.exists(obsdir):
         os.makedirs(obsdir)
@@ -421,11 +432,13 @@ def make_target_report(ra, dec, y_offset, z_offset,
         t_ccd_table = Table.read(table_file, format='ascii.fixed_width_two_line')
         t_ccd_roll = Table.read(just_roll_file, format='ascii.fixed_width_two_line')
     else:
-        t_ccd_table, t_ccd_roll = t_ccd_for_attitude(ra, dec,
-                                         y_offset, z_offset,
-                                         start=start,
-                                         stop=stop,
-	                                     outdir=obsdir)
+        t_ccd_table, t_ccd_roll = t_ccd_for_attitude(
+            ra, dec,
+            cycle, detector, too,
+            y_offset, z_offset,
+            start=start,
+            stop=stop,
+            outdir=obsdir)
         t_ccd_table.write(table_file,
                           format='ascii.fixed_width_two_line')
         if t_ccd_roll is not None:
@@ -522,6 +535,9 @@ def main():
     """
     opt = get_options()
     t_ccd_table = make_target_report(opt.ra, opt.dec,
+                                     cycle=opt.cycle,
+                                     detector=opt.detector,
+                                     too=opt.too,
                                      y_offset=opt.y_offset,
                                      z_offset=opt.z_offset,
                                      start=DateTime(opt.start),
