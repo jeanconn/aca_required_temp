@@ -4,6 +4,8 @@ import shutil
 import numpy as np
 import jinja2
 import matplotlib
+if __name__ == '__main__':
+    matplotlib.use('Agg')
 import subprocess
 from Ska.DBI import DBI
 from astropy.table import Table
