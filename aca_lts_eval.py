@@ -43,7 +43,7 @@ import mini_sausage
 PLANNING_LIMIT = -11.5
 EDGE_DIST = 30
 COLD_T_CCD = -21
-WARM_T_CCD = -7
+WARM_T_CCD = 0
 # explicitly disable MS filter
 set_acq_model_ms_filter(ms_enabled=False)
 
