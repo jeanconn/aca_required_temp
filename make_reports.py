@@ -73,6 +73,29 @@ targets.write(os.path.join(OUTDIR, 'requested_targets.txt'),
               format='ascii.fixed_width_two_line')
 
 
+week_targets = [20032,
+ 20033,
+ 18148,
+ 20022,
+ 19463,
+ 18903,
+ 18252,
+ 20029,
+ 19954,
+ 19488,
+ 19734,
+ 20023,
+ 20024,
+ 19335,
+ 20027,
+ 20028,
+ 19485,
+ 20030,
+ 20031]
+
+ok_targets = np.array([t['obsid'] in week_targets for t in targets])
+targets = targets[ok_targets]
+
 stop = DateTime('{}-03-15'.format(2000 + CYCLE))
 start = stop - (365 + 210)
 if opt.start is not None:
