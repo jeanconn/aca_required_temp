@@ -12,6 +12,8 @@ from astropy.table import Table
 from Chandra.Time import DateTime
 from aca_lts_eval import check_update_needed, make_target_report
 import chandra_aca
+import astropy.units as u
+from astropy.coordinates import SkyCoord, search_around_sky
 
 import warnings
 # Ignore known numexpr.necompiler and table.conditions warning
@@ -78,6 +80,19 @@ ORDER BY t.obsid"""
 targets = Table(db.fetchall(query))
 db.conn.close()
 del db
+
+# Remove target attitudes within 1 arcmin
+targ_coord = SkyCoord(targets['ra'], targets['dec'], unit='deg')
+# Use search_around_sky to get matches from the list into itself
+idx1, idx2, dist, dist3d = search_around_sky(targ_coord, targ_coord, seplimit=1 * u.arcmin)
+# Exactly matching oneself is not a duplicate
+itself = idx1 == idx2
+# In the indices into each list, if the index in idx1 is greater than the index in idx2
+# the target attitude is the 2nd or nth occurrence of the attitudes and is a duplicate
+dups = idx1[~itself][idx1[~itself] > idx2[~itself]]
+targets['duplicate'] = False
+targets['duplicate'][dups] = True
+targets = targets[targets['duplicate'] == False]
 targets.write(os.path.join(OUTDIR, 'requested_targets.txt'),
               format='ascii.fixed_width_two_line')
 
