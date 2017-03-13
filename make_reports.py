@@ -72,7 +72,8 @@ t.approved_exposure_time, t.instrument, t.grating, t.obs_ao_str, p.ao_str
 FROM target t
 right join prop_info p on t.ocat_propid = p.ocat_propid
 WHERE
-((t.status='unobserved' OR t.status='partially observed' OR t.status='untriggered' OR t.status='scheduled')
+(t.soe_st_sched_date is not null
+AND t.soe_st_sched_date >= '2011'
 AND NOT(t.ra = 0 AND t.dec = 0)
 AND NOT(t.ra IS NULL OR t.dec IS NULL))
 ORDER BY t.obsid"""
@@ -134,6 +135,9 @@ for t in targets:
     obsdir = os.path.join(OUTDIR, 'obs{:05d}'.format(t['obsid']))
     if not os.path.exists(obsdir) and opt.only_existing == False:
         os.makedirs(obsdir)
+    # I don't recall if this is perfectly accurate, but don't care
+    t['y_offset'] = 0 if t['y_offset'] is None else t['y_offset']
+    t['z_offset'] = 0 if t['z_offset'] is None else t['z_offset']
     redo = check_update_needed(t, obsdir) or opt.redo
     # Skip it if it really needs to be redone but we only want existing records
     if redo and opt.only_existing:
