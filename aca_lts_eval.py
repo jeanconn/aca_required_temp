@@ -194,9 +194,12 @@ def get_t_ccd_roll(ra, dec, cycle, detector, too, y_offset, z_offset, pitch, tim
     # check off nominal rolls in allowed range for a better catalog / temperature
     roll_dev = get_rolldev(pitch)
     d_roll = 1.0
-    plus_minus_rolls = np.concatenate([[-r, r] for r in
-                                       np.arange(d_roll, roll_dev, d_roll)])
-    off_nom_rolls = np.round(nom_roll) + plus_minus_rolls
+    if roll_dev > d_roll:
+        plus_minus_rolls = np.concatenate([[-r, r] for r in
+                                           np.arange(d_roll, roll_dev, d_roll)])
+        off_nom_rolls = np.round(nom_roll) + plus_minus_rolls
+    else:
+        off_nom_rolls = [np.round(nom_roll)]
     best_is_max = False
     for roll in off_nom_rolls:
         q_pnt = calc_aca_from_targ((ra, dec, roll),
