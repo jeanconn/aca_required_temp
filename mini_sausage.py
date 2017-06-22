@@ -13,10 +13,14 @@ import astropy.units as u
 from Quaternion import Quat
 from Ska.quatutil import radec2yagzag
 import chandra_aca
-import acq_char
+import json
 
-ARC_2_PIX = 1 / acq_char.General['Pix2Arc']
-PIX_2_ARC = acq_char.General['Pix2Arc']
+matlab_char = json.load(open('characteristics.json'))
+STAR_CHAR = matlab_char['FOT_MATLAB_Tools_Characteristics']['Stars']
+
+
+ARC_2_PIX = 1 / STAR_CHAR['General']['Pix2Arc']
+PIX_2_ARC = STAR_CHAR['General']['Pix2Arc']
 RAD_2_PIX = 180/np.pi*3600*ARC_2_PIX
 
 
@@ -38,12 +42,12 @@ def set_manvr_error(manvr_error):
     fixedErrorPad = DITHER + MANVR_ERROR
 
 
-def check_off_chips(cone_stars):
+def check_off_chips(cone_stars, opt):
     ypos = cone_stars['row']
     zpos = cone_stars['col']
-    yPixLim = acq_char.Star['Body']['Pixels']['YPixLim']
-    zPixLim = acq_char.Star['Body']['Pixels']['ZPixLim']
-    edgeBuffer = acq_char.Star['Body']['Pixels']['EdgeBuffer']
+    yPixLim = opt['Body']['Pixels']['YPixLim']
+    zPixLim = opt['Body']['Pixels']['ZPixLim']
+    edgeBuffer = opt['Body']['Pixels']['EdgeBuffer']
     pad = fixedErrorPad * ARC_2_PIX
     yn = (yPixLim[0] + (pad + edgeBuffer))
     yp = (yPixLim[1] - (pad + edgeBuffer))
@@ -56,8 +60,8 @@ def check_off_chips(cone_stars):
     yag = cone_stars['yang']
     zag = cone_stars['zang']
     arcsec_pad = fixedErrorPad
-    yArcSecLim = acq_char.Star['Body']['FOV']['YArcSecLim']
-    ZArcSecLim = acq_char.Star['Body']['FOV']['ZArcSecLim']
+    yArcSecLim = opt['Body']['FOV']['YArcSecLim']
+    ZArcSecLim = opt['Body']['FOV']['ZArcSecLim']
     arcsec_yn = yArcSecLim[0] + arcsec_pad
     arcsec_yp = yArcSecLim[1] - arcsec_pad
     arcsec_zn = ZArcSecLim[0] + arcsec_pad
@@ -94,6 +98,8 @@ def check_mag_spoilers(cone_stars, ok, opt):
     spoilslope = opt['Spoiler']['Slope']
     nSigma = opt['Spoiler']['SigErrMultiplier']
     magdifflim = opt['Spoiler']['MagDiffLimit']
+    if magdifflim == '-_Inf_':
+        magdifflim = -1 * np.inf
     mag = cone_stars['MAG_ACA']
     mag_col = 'mag_spoiled_{}'.format(nSigma)
     mag_spoil_check = 'mag_spoil_check_{}'.format(nSigma)
@@ -132,14 +138,18 @@ def check_mag_spoilers(cone_stars, ok, opt):
 
 def check_bad_pixels(cone_stars, not_bad, opt):
     bad_pixels = opt['Body']['Pixels']['BadPixels']
+    # start with big distances
+    distance = np.ones(len(cone_stars[not_bad])) * 9999
+    pix_idx = np.zeros(len(cone_stars[not_bad]))
+    if bad_pixels is None:
+        full_distance = np.ones(len(cone_stars)) * 9999
+        full_distance[not_bad] = distance
+        return full_distance
     row, col = cone_stars['row'], cone_stars['col']
     cand = cone_stars[not_bad]
     r = row[not_bad]
     c = col[not_bad]
     pad = .5 + fixedErrorPad * ARC_2_PIX
-    # start with big distances
-    distance = np.ones(len(cone_stars[not_bad])) * 9999
-    pix_idx = np.zeros(len(cone_stars[not_bad]))
     # small number of regions to check; vectorize later
     for idx, (rmin, rmax, cmin, cmax) in enumerate(bad_pixels):
         in_reg = ((r >= (rmin - pad)) & (r <= (rmax + pad))
@@ -248,18 +258,20 @@ def check_stage(cone_stars, not_bad, opt):
     return ok & ~mag_spoiled & ~bad_box
 
 
-def get_mag_errs(cone_stars):
+def get_mag_errs(cone_stars, opt):
     caterr = cone_stars['MAG_ACA_ERR'] / 100.
-    caterr = np.min([np.ones(len(caterr))*acq_char.Acq['Inertial']['MaxMagError'], caterr], axis=0)
-    randerr = acq_char.Acq['Inertial']['MagErrRand']
+    caterr = np.min([np.ones(len(caterr))*opt['Inertial']['MaxMagError'], caterr], axis=0)
+    randerr = opt['Inertial']['MagErrRand']
     magOneSigError = np.sqrt(randerr*randerr + caterr*caterr)
     return magOneSigError, magOneSigError**2
 
 
-def select_stars(ra, dec, roll, cone_stars, roll_indep=False):
+def select_acq_stars(ra, dec, roll, cone_stars, roll_indep=False):
+
+    opt = STAR_CHAR['Acq'][0]
 
     if 'mag_one_sig_err' not in cone_stars.columns:
-        cone_stars['mag_one_sig_err'], cone_stars['mag_one_sig_err2'] = get_mag_errs(cone_stars)
+        cone_stars['mag_one_sig_err'], cone_stars['mag_one_sig_err2'] = get_mag_errs(cone_stars, opt)
 
     if roll is None and roll_indep == False:
         raise ValueError("Roll may only be undefined if roll_indep explicitly True")
@@ -278,7 +290,8 @@ def select_stars(ra, dec, roll, cone_stars, roll_indep=False):
     cone_stars['col'] = col
 
     # none of these appear stage dependent
-    chip_edge_dist, fov_edge_dist, offchip, outofbounds = check_off_chips(cone_stars)
+
+    chip_edge_dist, fov_edge_dist, offchip, outofbounds = check_off_chips(cone_stars, opt)
     cone_stars['offchip'] = offchip
     cone_stars['outofbounds'] = outofbounds
     cone_stars['chip_edge_dist'] = chip_edge_dist
@@ -287,22 +300,22 @@ def select_stars(ra, dec, roll, cone_stars, roll_indep=False):
         cone_stars['chip_edge_dist'] = 512
         cone_stars['fov_edge_dist'] = 2500
 
-    bad_mag_error = cone_stars['MAG_ACA_ERR'] > acq_char.Acq['Inertial']['MagErrorTol']
+    bad_mag_error = cone_stars['MAG_ACA_ERR'] > opt['Inertial']['MagErrorTol']
     cone_stars['bad_mag_error'] = bad_mag_error
 
-    bad_pos_error = cone_stars['POS_ERR'] > acq_char.Acq['Inertial']['PosErrorTol']
+    bad_pos_error = cone_stars['POS_ERR'] > opt['Inertial']['PosErrorTol']
     cone_stars['bad_pos_error'] = bad_pos_error
 
-    bad_aspq1 = ((cone_stars['ASPQ1'] > np.max(acq_char.Acq['Inertial']['ASPQ1Lim']))
-                  | (cone_stars['ASPQ1'] < np.min(acq_char.Acq['Inertial']['ASPQ1Lim'])))
+    bad_aspq1 = ((cone_stars['ASPQ1'] > np.max(opt['Inertial']['ASPQ1Lim']))
+                  | (cone_stars['ASPQ1'] < np.min(opt['Inertial']['ASPQ1Lim'])))
     cone_stars['bad_aspq1'] = bad_aspq1
 
-    bad_aspq2 = ((cone_stars['ASPQ2'] > np.max(acq_char.Acq['Inertial']['ASPQ2Lim']))
-                  | (cone_stars['ASPQ2'] < np.min(acq_char.Acq['Inertial']['ASPQ2Lim'])))
+    bad_aspq2 = ((cone_stars['ASPQ2'] > np.max(opt['Inertial']['ASPQ2Lim']))
+                  | (cone_stars['ASPQ2'] < np.min(opt['Inertial']['ASPQ2Lim'])))
     cone_stars['bad_aspq2'] = bad_aspq2
 
-    bad_aspq3 = ((cone_stars['ASPQ3'] > np.max(acq_char.Acq['Inertial']['ASPQ3Lim']))
-                  | (cone_stars['ASPQ3'] < np.min(acq_char.Acq['Inertial']['ASPQ3Lim'])))
+    bad_aspq3 = ((cone_stars['ASPQ3'] > np.max(opt['Inertial']['ASPQ3Lim']))
+                  | (cone_stars['ASPQ3'] < np.min(opt['Inertial']['ASPQ3Lim'])))
     cone_stars['bad_aspq3'] = bad_aspq3
 
     variable = cone_stars['VAR'] > 9999
@@ -322,21 +335,21 @@ def select_stars(ra, dec, roll, cone_stars, roll_indep=False):
     # Set some column defaults that will be updated in check_stage
     cone_stars['stage'] = -1
 
-    stage1  = check_stage(cone_stars, not_bad, acq_char.Acq)
+    stage1  = check_stage(cone_stars, not_bad, opt)
     cone_stars['stage'][stage1] = 1
 
     stage2 = np.zeros_like(stage1)
     stage3 = np.zeros_like(stage1)
     stage4 = np.zeros_like(stage1)
     if np.count_nonzero(stage1) < 8:
-        stage2 = check_stage(cone_stars, not_bad & ~stage1, acq_char.Acq2)
+        stage2 = check_stage(cone_stars, not_bad & ~stage1, STAR_CHAR['Acq'][1])
         cone_stars['stage'][stage2] = 2
     if np.count_nonzero(stage1 | stage2) < 8:
-        stage3 = check_stage(cone_stars, not_bad & ~stage1 & ~stage2, acq_char.Acq3)
+        stage3 = check_stage(cone_stars, not_bad & ~stage1 & ~stage2, STAR_CHAR['Acq'][2])
         cone_stars['stage'][stage3] = 3
     if np.count_nonzero(stage1 | stage2 | stage3) < 8:
         stage4 = check_stage(cone_stars, not_bad & ~stage1 & ~stage2 & ~stage3,
-                             acq_char.Acq4)
+                             STAR_CHAR['Acq'][3])
         cone_stars['stage'][stage4] = 4
 
     selected = cone_stars[stage1 | stage2 | stage3 | stage4]
