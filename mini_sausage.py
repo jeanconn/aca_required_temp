@@ -157,16 +157,17 @@ def check_bad_pixels(cone_stars, not_bad, opt):
     pad = .5 + fixedErrorPad(opt['Type']) * ARC_2_PIX
     # small number of regions to check; vectorize later
     for idx, (rmin, rmax, cmin, cmax) in enumerate(bad_pixels):
-        in_reg = ((r >= (rmin - pad)) & (r <= (rmax + pad))
-                  & (c >= (cmin - pad)) & (c <= (cmax + pad)))
+        in_reg_r = (r >= (rmin - pad)) & (r <= (rmax + pad))
+        in_reg_c = (c >= (cmin - pad)) & (c <= (cmax + pad))
         r_dist = np.min(np.abs(
                 [r - (rmin - pad), r - (rmax + pad)]), axis=0)
+        r_dist[in_reg_r] = 0
         c_dist = np.min(np.abs(
                 [c - (cmin - pad), c - (cmax + pad)]), axis=0)
+        c_dist[in_reg_c] = 0
         # for the nearest manhattan distance, we want the max
         # of the minimums
         min_dist = np.max(np.vstack([r_dist, c_dist]), axis=0)
-        min_dist[in_reg] = 0
         idxmatch = np.argmin([distance, min_dist], axis=0) == 1
         pix_idx[idxmatch] = idx
         distance = np.min([distance, min_dist], axis=0)
