@@ -77,7 +77,7 @@ def check_off_chips(cone_stars, opt):
     return chip_edge_dist, fov_edge_dist, offchip, outofbounds
 
 
-def check_mag(cone_stars, opt):
+def check_mag(cone_stars, opt, label):
     magOneSigError = cone_stars['mag_one_sig_err']
     mag = cone_stars['MAG_ACA']
     magNSig = opt['Spoiler']['SigErrMultiplier'] * magOneSigError
@@ -86,9 +86,9 @@ def check_mag(cone_stars, opt):
     too_dim = ((mag + magNSig + opt['Inertial']['MagErrSyst'])
                > np.max(opt['Inertial']['MagLimit']))
     nomag = mag == -9999
-    cone_stars['too_bright'] = too_bright
-    cone_stars['too_dim'] = too_dim
-    cone_stars['nomag'] = nomag
+    cone_stars['too_bright_{}'.format(label)] = too_bright
+    cone_stars['too_dim_{}'.format(label)] = too_dim
+    cone_stars['nomag_{}'.format(label)] = nomag
     return ~too_bright & ~too_dim & ~nomag
 
 
@@ -106,8 +106,8 @@ def check_mag_spoilers(cone_stars, ok, opt):
     if magdifflim == '-_Inf_':
         magdifflim = -1 * np.inf
     mag = cone_stars['MAG_ACA']
-    mag_col = 'mag_spoiled_{}'.format(nSigma)
-    mag_spoil_check = 'mag_spoil_check_{}'.format(nSigma)
+    mag_col = 'mag_spoiled_{}_{}'.format(nSigma, stype)
+    mag_spoil_check = 'mag_spoil_check_{}_{}'.format(nSigma, stype)
     if mag_col in cone_stars.columns:
         # if ok for stage and not previously mag spoiler checked for this
         # nsigma
@@ -215,9 +215,9 @@ def check_column(cone_stars, not_bad, opt, chip_pos):
     pass
 
 
-def check_stage(cone_stars, not_bad, opt):
+def check_stage(cone_stars, not_bad, opt, label):
     stype = opt['Type']
-    mag_ok = check_mag(cone_stars, opt)
+    mag_ok = check_mag(cone_stars, opt, label)
     ok = mag_ok & not_bad
     if not np.any(ok):
         return ok
