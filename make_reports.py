@@ -11,6 +11,7 @@ from Ska.DBI import DBI
 from astropy.table import Table
 from Chandra.Time import DateTime
 from aca_lts_eval import check_update_needed, make_target_report
+import chandra_aca
 
 import warnings
 # Ignore known numexpr.necompiler and table.conditions warning
@@ -200,6 +201,7 @@ page = template.render(table=report_table,
                        start=start.fits,
                        stop=stop.fits,
                        gitlabel=gitlabel,
+                       chandra_aca=chandra_aca.__version__,
                        release=RELEASE_VERSION,
                        label='ACA Evaluation of Targets')
 f = open(os.path.join(OUTDIR, 'index.html'), 'w')
