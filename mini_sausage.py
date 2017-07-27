@@ -329,14 +329,12 @@ def select_stage_stars(ra, dec, roll, cone_stars, roll_indep=False, stype='Acq')
                   | (cone_stars['ASPQ3'] < np.min(opt['Inertial']['ASPQ3Lim'])))
     cone_stars['bad_aspq3_{}'.format(stype)] = bad_aspq3
 
-    variable = cone_stars['VAR'] > 9999
-    cone_stars['variable'] = variable
 
     nonstellar = cone_stars['CLASS'] != 0
     cone_stars['nonstellar'] = nonstellar
 
     not_bad = (~offchip & ~outofbounds & ~bad_mag_error & ~bad_pos_error
-                & ~nonstellar & ~bad_aspq1 & ~bad_aspq2 & ~bad_aspq3 & ~variable)
+                & ~nonstellar & ~bad_aspq1 & ~bad_aspq2 & ~bad_aspq3)
 
     if roll_indep:
         inner_ring = row**2 + col**2 < 480**2
