@@ -5,7 +5,7 @@ warnings.filterwarnings(
     message="using `oa_ndim == 0` when `op_axes` is NULL is deprecated.*",
     category=DeprecationWarning)
 
-
+import agasc
 import numpy as np
 from astropy.table import Table, Column
 from astropy.coordinates import SkyCoord, search_around_sky
@@ -26,7 +26,7 @@ RAD_2_PIX = 180/np.pi*3600*ARC_2_PIX
 
 DITHER = 8
 MANVR_ERROR = 60
-fixedErrorPad = DITHER + MANVR_ERROR
+#fixedErrorPad = DITHER + MANVR_ERROR
 fieldErrorPad = 0
 
 
@@ -37,9 +37,13 @@ def set_dither(dither):
 
 def set_manvr_error(manvr_error):
     global MANVR_ERROR
-    global fixedErrorPad
+    #global fixedErrorPad
     MANVR_ERROR = manvr_error
-    fixedErrorPad = DITHER + MANVR_ERROR
+    #fixedErrorPad = DITHER + MANVR_ERROR
+
+
+def fixedErrorPad(stype):
+    return DITHER + MANVR_ERROR if stype == 'Acq' else DITHER
 
 
 def check_off_chips(cone_stars, opt):
@@ -48,7 +52,7 @@ def check_off_chips(cone_stars, opt):
     yPixLim = opt['Body']['Pixels']['YPixLim']
     zPixLim = opt['Body']['Pixels']['ZPixLim']
     edgeBuffer = opt['Body']['Pixels']['EdgeBuffer']
-    pad = fixedErrorPad * ARC_2_PIX
+    pad = fixedErrorPad(opt['Type']) * ARC_2_PIX
     yn = (yPixLim[0] + (pad + edgeBuffer))
     yp = (yPixLim[1] - (pad + edgeBuffer))
     zn = (zPixLim[0] + (pad + edgeBuffer))
@@ -59,7 +63,7 @@ def check_off_chips(cone_stars, opt):
     offchip = chip_edge_dist < 0
     yag = cone_stars['yang']
     zag = cone_stars['zang']
-    arcsec_pad = fixedErrorPad
+    arcsec_pad = fixedErrorPad(opt['Type'])
     yArcSecLim = opt['Body']['FOV']['YArcSecLim']
     ZArcSecLim = opt['Body']['FOV']['ZArcSecLim']
     arcsec_yn = yArcSecLim[0] + arcsec_pad
@@ -89,6 +93,7 @@ def check_mag(cone_stars, opt):
 
 
 def check_mag_spoilers(cone_stars, ok, opt):
+    stype = opt['Type']
     magOneSigError = cone_stars['mag_one_sig_err']
     stderr2 = cone_stars['mag_one_sig_err2']
     fidpad = fieldErrorPad * ARC_2_PIX
@@ -149,7 +154,7 @@ def check_bad_pixels(cone_stars, not_bad, opt):
     cand = cone_stars[not_bad]
     r = row[not_bad]
     c = col[not_bad]
-    pad = .5 + fixedErrorPad * ARC_2_PIX
+    pad = .5 + fixedErrorPad(opt['Type']) * ARC_2_PIX
     # small number of regions to check; vectorize later
     for idx, (rmin, rmax, cmin, cmax) in enumerate(bad_pixels):
         in_reg = ((r >= (rmin - pad)) & (r <= (rmax + pad))
@@ -170,12 +175,12 @@ def check_bad_pixels(cone_stars, not_bad, opt):
     return full_distance
 
 
-def dist_to_bright_spoiler(cone_stars, ok, nSigma):
+def dist_to_bright_spoiler(cone_stars, ok, nSigma, opt):
     magOneSigError = cone_stars['mag_one_sig_err']
     row, col = cone_stars['row'], cone_stars['col']
     mag = cone_stars['MAG_ACA']
     magerr2 = cone_stars['mag_one_sig_err2']
-    errorpad = (fieldErrorPad + fixedErrorPad) * ARC_2_PIX
+    errorpad = (fieldErrorPad + fixedErrorPad(opt['Type'])) * ARC_2_PIX
     dist = np.ones(len(cone_stars)) * 9999
     for cand, cand_magerr, idx in zip(cone_stars[ok],
                                       magOneSigError[ok],
@@ -205,50 +210,55 @@ def check_column(cone_stars, not_bad, opt, chip_pos):
     row, col = chip_pos
     starmag = cone_stars['MAG_ACA']
     magerr2 = cone_stars['mag_one_sig_err2']
-    register_pad = fixedErrorPad * ARC_2_PIX
+    register_pad = fixedErrorPad(opt['Type']) * ARC_2_PIX
     column_pad = fieldErrorPad * ARC_2_PIX
     pass
 
 
 def check_stage(cone_stars, not_bad, opt):
+    stype = opt['Type']
     mag_ok = check_mag(cone_stars, opt)
     ok = mag_ok & not_bad
     if not np.any(ok):
         return ok
     nSigma = opt['Spoiler']['SigErrMultiplier']
-    mag_check_col = 'mag_spoil_check_{}'.format(nSigma)
+    mag_check_col = 'mag_spoil_check_{}_{}'.format(nSigma, stype)
     if mag_check_col not in cone_stars.columns:
         cone_stars[mag_check_col] = np.zeros_like(not_bad)
-        cone_stars['mag_spoiled_{}'.format(nSigma)] = np.zeros_like(not_bad)
+        cone_stars['mag_spoiled_{}_{}'.format(nSigma, stype)] = np.zeros_like(not_bad)
     mag_spoiled, checked= check_mag_spoilers(cone_stars, ok, opt)
     cone_stars[mag_check_col] = cone_stars[mag_check_col] | checked
-    cone_stars['mag_spoiled_{}'.format(nSigma)] = (
-        cone_stars['mag_spoiled_{}'.format(nSigma)] | mag_spoiled)
+    cone_stars['mag_spoiled_{}_{}'.format(nSigma, stype)] = (
+        cone_stars['mag_spoiled_{}_{}'.format(nSigma, stype)] | mag_spoiled)
     bad_pix_dist = check_bad_pixels(cone_stars, ok & ~mag_spoiled, opt)
-    cone_stars['bad_pix_dist'] = bad_pix_dist
+    cone_stars['bad_pix_dist_{}'.format(stype)] = bad_pix_dist
 
     # these star distance checks are in pixels, so just do them for
     # every roll
-    cone_stars['star_dist_{}'.format(nSigma)] = 9999
-    star_dist = dist_to_bright_spoiler(cone_stars, ok & ~mag_spoiled, nSigma)
-    cone_stars['star_dist_{}'.format(nSigma)] = np.min(
-                [cone_stars['star_dist_{}'.format(nSigma)], star_dist],
+    cone_stars['star_dist_{}_{}'.format(nSigma, stype)] = 9999
+    star_dist = dist_to_bright_spoiler(cone_stars, ok & ~mag_spoiled, nSigma, opt)
+    cone_stars['star_dist_{}_{}'.format(nSigma, stype)] = np.min(
+                [cone_stars['star_dist_{}_{}'.format(nSigma, stype)], star_dist],
                 axis=0)
 
-    minBoxArc = np.ceil(fixedErrorPad/5.0)*5
-    minBoxArc = np.max([opt['Select']['MinSearchBox'], minBoxArc])
-    maxBoxArc = np.array(opt['Select']['MaxSearchBox'])
-    maxBoxArc = np.min(maxBoxArc[maxBoxArc >= minBoxArc])
+    if opt['Type'] == 'Acq':
+        minBoxArc = np.ceil(fixedErrorPad(opt['Type'])/5.0)*5
+        minBoxArc = np.max([opt['Select']['MinSearchBox'], minBoxArc])
+        maxBoxArc = np.array(opt['Select']['MaxSearchBox'])
+        maxBoxArc = np.min(maxBoxArc[maxBoxArc >= minBoxArc])
+    else:
+        maxBoxArc = opt['Select']['MaxSearchBox'] # 25
+        minBoxArc = opt['Select']['MinSearchBox']
 
-    starBox = np.min([cone_stars['star_dist_{}'.format(nSigma)],
-                      cone_stars['bad_pix_dist'],
-                      cone_stars['chip_edge_dist'],
-                      cone_stars['fov_edge_dist'] * ARC_2_PIX], axis=0)
+    starBox = np.min([cone_stars['star_dist_{}_{}'.format(nSigma, stype)],
+                      cone_stars['bad_pix_dist_{}'.format(stype)],
+                      cone_stars['chip_edge_dist_{}'.format(stype)],
+                      cone_stars['fov_edge_dist_{}'.format(stype)] * ARC_2_PIX], axis=0)
     box_size_arc = ((starBox * PIX_2_ARC) // 5) * 5
     box_size_arc[box_size_arc > maxBoxArc] = maxBoxArc
-    cone_stars['box_size_arc'] = box_size_arc
+    cone_stars['box_size_arc_{}'.format(stype)] = box_size_arc
     bad_box = starBox < (minBoxArc * ARC_2_PIX)
-    cone_stars['bad_box'] = bad_box
+    cone_stars['bad_box_{}'.format(stype)] = bad_box
 #    if opt['SearchSettings']['DoColumnRegisterCheck']:
 #        badcolumn = check_column(cone_stars, ok & ~mag_spoiled & ~bad_dist, opt, chip_pos)
 #        ok = ok & ~badcolumn
@@ -266,9 +276,11 @@ def get_mag_errs(cone_stars, opt):
     return magOneSigError, magOneSigError**2
 
 
-def select_acq_stars(ra, dec, roll, cone_stars, roll_indep=False):
+def select_stage_stars(ra, dec, roll, cone_stars, roll_indep=False, stype='Acq'):
 
-    opt = STAR_CHAR['Acq'][0]
+    opt = STAR_CHAR[stype][0]
+    opt['Type'] = stype
+    opt['Stage'] = 0
 
     if 'mag_one_sig_err' not in cone_stars.columns:
         cone_stars['mag_one_sig_err'], cone_stars['mag_one_sig_err2'] = get_mag_errs(cone_stars, opt)
@@ -289,34 +301,33 @@ def select_acq_stars(ra, dec, roll, cone_stars, roll_indep=False):
     cone_stars['row'] = row
     cone_stars['col'] = col
 
-    # none of these appear stage dependent
-
+    # none of these appear stage dependent, but they could be type (guide/acq) dependent
     chip_edge_dist, fov_edge_dist, offchip, outofbounds = check_off_chips(cone_stars, opt)
-    cone_stars['offchip'] = offchip
-    cone_stars['outofbounds'] = outofbounds
-    cone_stars['chip_edge_dist'] = chip_edge_dist
-    cone_stars['fov_edge_dist'] = fov_edge_dist
+    cone_stars['offchip_{}'.format(stype)] = offchip
+    cone_stars['outofbounds_{}'.format(stype)] = outofbounds
+    cone_stars['chip_edge_dist_{}'.format(stype)] = chip_edge_dist
+    cone_stars['fov_edge_dist_{}'.format(stype)] = fov_edge_dist
     if roll_indep:
-        cone_stars['chip_edge_dist'] = 512
-        cone_stars['fov_edge_dist'] = 2500
+        cone_stars['chip_edge_dist_{}'.format(stype)] = 512
+        cone_stars['fov_edge_dist_{}'.format(stype)] = 2500
 
     bad_mag_error = cone_stars['MAG_ACA_ERR'] > opt['Inertial']['MagErrorTol']
-    cone_stars['bad_mag_error'] = bad_mag_error
+    cone_stars['bad_mag_error_{}'.format(stype)] = bad_mag_error
 
     bad_pos_error = cone_stars['POS_ERR'] > opt['Inertial']['PosErrorTol']
-    cone_stars['bad_pos_error'] = bad_pos_error
+    cone_stars['bad_pos_error_{}'.format(stype)] = bad_pos_error
 
     bad_aspq1 = ((cone_stars['ASPQ1'] > np.max(opt['Inertial']['ASPQ1Lim']))
                   | (cone_stars['ASPQ1'] < np.min(opt['Inertial']['ASPQ1Lim'])))
-    cone_stars['bad_aspq1'] = bad_aspq1
+    cone_stars['bad_aspq1_{}'.format(stype)] = bad_aspq1
 
     bad_aspq2 = ((cone_stars['ASPQ2'] > np.max(opt['Inertial']['ASPQ2Lim']))
                   | (cone_stars['ASPQ2'] < np.min(opt['Inertial']['ASPQ2Lim'])))
-    cone_stars['bad_aspq2'] = bad_aspq2
+    cone_stars['bad_aspq2_{}'.format(stype)] = bad_aspq2
 
     bad_aspq3 = ((cone_stars['ASPQ3'] > np.max(opt['Inertial']['ASPQ3Lim']))
                   | (cone_stars['ASPQ3'] < np.min(opt['Inertial']['ASPQ3Lim'])))
-    cone_stars['bad_aspq3'] = bad_aspq3
+    cone_stars['bad_aspq3_{}'.format(stype)] = bad_aspq3
 
     variable = cone_stars['VAR'] > 9999
     cone_stars['variable'] = variable
@@ -331,36 +342,45 @@ def select_acq_stars(ra, dec, roll, cone_stars, roll_indep=False):
         inner_ring = row**2 + col**2 < 480**2
         not_bad = not_bad & inner_ring
 
-
     # Set some column defaults that will be updated in check_stage
-    cone_stars['stage'] = -1
-
-    stage1  = check_stage(cone_stars, not_bad, opt)
-    cone_stars['stage'][stage1] = 1
-
-    stage2 = np.zeros_like(stage1)
-    stage3 = np.zeros_like(stage1)
-    stage4 = np.zeros_like(stage1)
-    if np.count_nonzero(stage1) < 8:
-        stage2 = check_stage(cone_stars, not_bad & ~stage1, STAR_CHAR['Acq'][1])
-        cone_stars['stage'][stage2] = 2
-    if np.count_nonzero(stage1 | stage2) < 8:
-        stage3 = check_stage(cone_stars, not_bad & ~stage1 & ~stage2, STAR_CHAR['Acq'][2])
-        cone_stars['stage'][stage3] = 3
-    if np.count_nonzero(stage1 | stage2 | stage3) < 8:
-        stage4 = check_stage(cone_stars, not_bad & ~stage1 & ~stage2 & ~stage3,
-                             STAR_CHAR['Acq'][3])
-        cone_stars['stage'][stage4] = 4
-
-    selected = cone_stars[stage1 | stage2 | stage3 | stage4]
-    selected['box_delta'] = 240 - selected['box_size_arc']
-    selected.sort(['stage', 'box_delta', 'MAG_ACA'])
-    cone_stars['selected'] = False
-    for agasc_id in selected[0:8]['AGASC_ID']:
-        cone_stars['selected'][cone_stars['AGASC_ID'] == agasc_id] = True
-    return selected[0:8], cone_stars
+    cone_stars['{}_stage'.format(stype)] = -1
+    ncand = opt['Select']['NMaxSelect'] + opt['Select']['nSurplus']
+    for idx, stage_char in enumerate(STAR_CHAR[stype], 1):
+        # Save the type in the characteristics
+        stage_char['Type'] = stype
+        stage_char['Stage'] = idx
+        if np.count_nonzero(cone_stars['{}_stage'.format(stype)] != -1) < ncand:
+            stage  = check_stage(cone_stars,
+                                 not_bad & ~(cone_stars['{}_stage'.format(stype)] != -1),
+                                 stage_char, "{}_{}".format(stype, str(idx)))
+            cone_stars['{}_stage'.format(stype)][stage] = idx
+    selected = cone_stars[cone_stars['{}_stage'.format(stype)] != -1]
+    return selected
 
 
+def select_acq_stars(ra, dec, roll, n=8, cone_stars=None, roll_indep=False, date=None):
+    if cone_stars is None:
+        cone_stars = agasc.get_agasc_cone(ra, dec, radius=3, date=date, agasc_file='/proj/sot/ska/data/agasc/agasc1p6.h5')
+    selected = select_stage_stars(ra, dec, roll, cone_stars,
+                                  roll_indep=roll_indep, stype='Acq')
+    selected['box_delta'] = 240 - selected['box_size_arc_Acq']
+    selected.sort(['Acq_stage', 'box_delta', 'MAG_ACA'])
+    cone_stars['Acq_selected'] = False
+    for agasc_id in selected[0:n]['AGASC_ID']:
+        cone_stars['Acq_selected'][cone_stars['AGASC_ID'] == agasc_id] = True
+    return selected[0:n], cone_stars
 
 
+def select_guide_stars(ra, dec, roll, n=5, cone_stars=None, roll_indep=False, date=None):
+    if cone_stars is None:
+        cone_stars = agasc.get_agasc_cone(ra, dec, radius=3, date=date, agasc_file='/proj/sot/ska/data/agasc/agasc1p6.h5')
+    selected = select_stage_stars(ra, dec, roll, cone_stars,
+                                  roll_indep=roll_indep, stype='Guide')
+    # Ignore guide star code to use ACA matrix etc to optimize selection of stars in the last
+    # stage and just take these by stage and then magnitude
+    selected.sort(['Guide_stage', 'MAG_ACA'])
+    cone_stars['Guide_selected'] = False
+    for agasc_id in selected[0:n]['AGASC_ID']:
+        cone_stars['Guide_selected'][cone_stars['AGASC_ID'] == agasc_id] = True
+    return selected[0:n], cone_stars
 

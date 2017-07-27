@@ -130,7 +130,7 @@ def select_stars(ra, dec, roll, cone_stars):
     id_key = (ra, dec, roll)
     updated_cone_stars = cone_stars
     if id_key not in CAT_CACHE:
-        CAT_CACHE[id_key], updated_cone_stars = mini_sausage.select_stars(
+        CAT_CACHE[id_key], updated_cone_stars = mini_sausage.select_acq_stars(
             ra, dec, roll, cone_stars)
     return CAT_CACHE[id_key], updated_cone_stars
 
@@ -139,7 +139,7 @@ def select_ri_stars(ra, dec, cone_stars):
     id_key = (ra, dec)
     updated_cone_stars = cone_stars
     if id_key not in RI_CAT_CACHE:
-        RI_CAT_CACHE[id_key], updated_cone_stars = mini_sausage.select_stars(
+        RI_CAT_CACHE[id_key], updated_cone_stars = mini_sausage.select_acq_stars(
             ra, dec, None, cone_stars, roll_indep=True)
     return RI_CAT_CACHE[id_key], updated_cone_stars
 
@@ -255,7 +255,7 @@ def t_ccd_for_attitude(ra, dec, cycle, detector, too, y_offset=0, z_offset=0,
         raise ValueError("No stars found in 3 degree radius of {} {}".format(ra, dec))
 
     # get mag errs once for the field
-    cone_stars['mag_one_sig_err'], cone_stars['mag_one_sig_err2'] = mini_sausage.get_mag_errs(cone_stars)
+    #cone_stars['mag_one_sig_err'], cone_stars['mag_one_sig_err2'] = mini_sausage.get_mag_errs(cone_stars)
 
     # get a list of days
     days = start + np.arange(stop - start)
