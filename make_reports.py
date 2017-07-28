@@ -40,6 +40,8 @@ def get_options():
     parser.add_argument("--daystep",
                         default=1,
                         type=int)
+    parser.add_argument("--obsid-file",
+                        help="File with list of obsids to process")
     parser.add_argument("--redo",
                         action='store_true',
                         help="Redo processing even if complete and up-to-date")
@@ -76,6 +78,14 @@ db.conn.close()
 del db
 targets.write(os.path.join(OUTDIR, 'requested_targets.txt'),
               format='ascii.fixed_width_two_line')
+
+
+if opt.obsid_file is not None:
+    targets['requested'] = False
+    obsids = Table.read(opt.obsid_file, format='ascii')['obsid']
+    for obsid in obsids:
+        targets['requested'][targets['obsid'] == int(obsid)] = True
+    targets = targets[targets['requested'] == True]
 
 
 stop = DateTime('{}-03-15'.format(2000 + CYCLE))
