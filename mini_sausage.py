@@ -26,7 +26,6 @@ RAD_2_PIX = 180/np.pi*3600*ARC_2_PIX
 
 DITHER = 8
 MANVR_ERROR = 60
-#fixedErrorPad = DITHER + MANVR_ERROR
 fieldErrorPad = 0
 
 
@@ -37,9 +36,7 @@ def set_dither(dither):
 
 def set_manvr_error(manvr_error):
     global MANVR_ERROR
-    #global fixedErrorPad
     MANVR_ERROR = manvr_error
-    #fixedErrorPad = DITHER + MANVR_ERROR
 
 
 def fixedErrorPad(stype):
