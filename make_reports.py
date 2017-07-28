@@ -48,6 +48,8 @@ def get_options():
     parser.add_argument("--incremental",
                        action='store_true',
                        help="Write out table as processed (good for recovery of long processing)")
+    parser.add_argument("--only-existing",
+                       action="store_true")
     opt = parser.parse_args()
     return opt
 
@@ -113,6 +115,8 @@ update_cnt = 0
 
 for t in targets:
     obsdir = os.path.join(OUTDIR, 'obs{:05d}'.format(t['obsid']))
+    if not os.path.exists(obsdir) and opt.only_existing == True:
+        continue
     if not os.path.exists(obsdir):
         os.makedirs(obsdir)
     redo = check_update_needed(t, obsdir) or opt.redo
