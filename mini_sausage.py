@@ -356,7 +356,7 @@ def select_stage_stars(ra, dec, roll, cone_stars, roll_indep=False, stype='Acq')
 
 def select_acq_stars(ra, dec, roll, n=8, cone_stars=None, roll_indep=False, date=None):
     if cone_stars is None:
-        cone_stars = agasc.get_agasc_cone(ra, dec, radius=3, date=date, agasc_file='/proj/sot/ska/data/agasc/agasc1p6.h5')
+        cone_stars = agasc.get_agasc_cone(ra, dec, radius=2, date=date, agasc_file='/proj/sot/ska/data/agasc/agasc1p6.h5')
     selected = select_stage_stars(ra, dec, roll, cone_stars,
                                   roll_indep=roll_indep, stype='Acq')
     selected['box_delta'] = 240 - selected['box_size_arc_Acq']
@@ -369,7 +369,7 @@ def select_acq_stars(ra, dec, roll, n=8, cone_stars=None, roll_indep=False, date
 
 def select_guide_stars(ra, dec, roll, n=5, cone_stars=None, roll_indep=False, date=None):
     if cone_stars is None:
-        cone_stars = agasc.get_agasc_cone(ra, dec, radius=3, date=date, agasc_file='/proj/sot/ska/data/agasc/agasc1p6.h5')
+        cone_stars = agasc.get_agasc_cone(ra, dec, radius=2, date=date, agasc_file='/proj/sot/ska/data/agasc/agasc1p6.h5')
     selected = select_stage_stars(ra, dec, roll, cone_stars,
                                   roll_indep=roll_indep, stype='Guide')
     # Ignore guide star code to use ACA matrix etc to optimize selection of stars in the last
