@@ -129,25 +129,47 @@ def get_rolldev(pitch):
     return ROLL_TABLE['rolldev'][idx - 1]
 
 
-def select_stars(ra, dec, roll, cone_stars):
+def select_stars(ra, dec, roll, cone_stars, outdir):
     id_key = (ra, dec, roll)
     updated_cone_stars = cone_stars
+    id_hash = '{:.4f}_{:.4f}_{:.4f}'.format(ra, dec, roll)
     if id_key not in CAT_CACHE:
-        CAT_CACHE[id_key], updated_cone_stars = mini_sausage.select_acq_stars(
-            ra, dec, roll, cone_stars)
-    return CAT_CACHE[id_key], updated_cone_stars
+        # First check if there's actually one on disk
+        if os.path.exists(os.path.join(outdir, "{}.dat".format(id_hash))):
+            CAT_CACHE[id_key] = Table.read(os.path.join(outdir, "{}.dat".format(id_hash)),
+                                      format="ascii")
+        else:
+            CAT_CACHE[id_key], updated_cone_stars = mini_sausage.select_acq_stars(
+                ra, dec, roll, n=8, cone_stars=cone_stars)
+            CAT_CACHE[id_key].write(os.path.join(outdir, "{}.html".format(id_hash)),
+                                    format="jsviewer")
+            CAT_CACHE[id_key].write(os.path.join(outdir, "{}.dat".format(id_hash)),
+                                    format="ascii")
+
+    return CAT_CACHE[id_key], updated_cone_stars, id_hash
 
 
-def select_ri_stars(ra, dec, cone_stars):
+def select_ri_stars(ra, dec, cone_stars, outdir):
     id_key = (ra, dec)
     updated_cone_stars = cone_stars
+    id_hash = '{:.4f}_{:.4f}'.format(ra, dec)
     if id_key not in RI_CAT_CACHE:
-        RI_CAT_CACHE[id_key], updated_cone_stars = mini_sausage.select_acq_stars(
-            ra, dec, None, cone_stars, roll_indep=True)
-    return RI_CAT_CACHE[id_key], updated_cone_stars
+        # First check if there's actually one on disk
+        if os.path.exists(os.path.join(outdir, "{}.dat".format(id_hash))):
+            RI_CAT_CACHE[id_key]= Table.read(os.path.join(outdir, "{}.dat".format(id_hash)),
+                                      format="ascii")
+        else:
+            RI_CAT_CACHE[id_key], updated_cone_stars = mini_sausage.select_acq_stars(
+                ra, dec, None, n=8, cone_stars=cone_stars, roll_indep=True)
+            RI_CAT_CACHE[id_key].write(os.path.join(outdir, "{}.html".format(id_hash)),
+                            format="jsviewer")
+            RI_CAT_CACHE[id_key].write(os.path.join(outdir, "{}.dat".format(id_hash)),
+                            format="ascii")
+
+    return RI_CAT_CACHE[id_key], updated_cone_stars, id_hash
 
 
-def get_t_ccd_roll(ra, dec, cycle, detector, too, y_offset, z_offset, pitch, time, cone_stars):
+def get_t_ccd_roll(ra, dec, cycle, detector, too, y_offset, z_offset, pitch, time, cone_stars, outdir):
     """
     Loop over possible roll range for this pitch and return best
     and nominal temperature/roll combinations
@@ -170,17 +192,19 @@ def get_t_ccd_roll(ra, dec, cycle, detector, too, y_offset, z_offset, pitch, tim
     # if the offsets are both small, so the pointing attitude is relatively roll-independent
     # check the relatively roll independent circle
     if abs(y_offset) < .3 and abs(z_offset) < .3:
-        roll_indep_stars = select_ri_stars(ra_pnt, dec_pnt, cone_stars)[0]
+        ri_data = select_ri_stars(ra_pnt, dec_pnt, cone_stars, outdir=outdir)
+        roll_indep_stars = ri_data[0]
+        id_hash = ri_data[2]
         ri_t_ccd, ri_t_acq = max_temp(time=time, stars=roll_indep_stars)
         if (ri_t_ccd == WARM_T_CCD):
-            nom = (WARM_T_CCD, nom_roll, ri_t_acq, roll_indep_stars)
+            nom = (WARM_T_CCD, nom_roll, ri_t_acq, roll_indep_stars, id_hash)
             return {'nomdata': nom,
                     'bestdata': nom,
                     'rolls': {nom_roll: ri_t_ccd},
                     'cone_stars': cone_stars,
                     'roll_indep': True,
                     'comment': 'roll-independent'}
-    nom_stars, updated_cone_stars = select_stars(ra_pnt, dec_pnt, nom_roll, cone_stars)
+    nom_stars, updated_cone_stars, nom_id_hash = select_stars(ra_pnt, dec_pnt, nom_roll, cone_stars, outdir=outdir)
     cone_stars = updated_cone_stars
     nom_t_ccd, nom_n_acq = max_temp(time=time, stars=nom_stars)
     all_rolls = {nom_roll: nom_t_ccd}
@@ -210,7 +234,7 @@ def get_t_ccd_roll(ra, dec, cycle, detector, too, y_offset, z_offset, pitch, tim
                                    (z_offset / 60.) + (aca_offset_z / 3600.))
         ra_pnt = q_pnt.ra
         dec_pnt = q_pnt.dec
-        roll_stars, updated_cone_stars = select_stars(ra_pnt, dec_pnt, roll, cone_stars)
+        roll_stars, updated_cone_stars, roll_id_hash = select_stars(ra_pnt, dec_pnt, roll, cone_stars, outdir=outdir)
         cone_stars = updated_cone_stars
         roll_t_ccd, roll_n_acq = max_temp(time=time, stars=roll_stars)
         all_rolls[roll] = roll_t_ccd
@@ -219,13 +243,14 @@ def get_t_ccd_roll(ra, dec, cycle, detector, too, y_offset, z_offset, pitch, tim
                 best_t_ccd = roll_t_ccd
                 best_roll = roll
                 best_stars = roll_stars
+                best_id_hash = roll_id_hash
                 best_n_acq = roll_n_acq
                 if abs(roll - np.round(nom_roll)) > (roll_dev - d_roll):
                     best_is_max = True
             if (best_t_ccd == WARM_T_CCD):
                 break
-    nom =  (nom_t_ccd, nom_roll, nom_n_acq, nom_stars)
-    best = (best_t_ccd, best_roll, best_n_acq, best_stars)
+    nom =  (nom_t_ccd, nom_roll, nom_n_acq, nom_stars, nom_id_hash)
+    best = (best_t_ccd, best_roll, best_n_acq, best_stars, best_id_hash)
     comment = ''
     if best_is_max:
         comment = 'best roll at max offset'
@@ -299,20 +324,12 @@ def t_ccd_for_attitude(ra, dec, cycle, detector, too, y_offset=0, z_offset=0,
         # Run the temperature thing once to see if this might be good for all rolls
         r_data_check = get_t_ccd_roll(
             ra, dec, cycle, detector, too, y_offset, z_offset,
-            last_good_pitch, time=last_good_day, cone_stars=cone_stars)
+            last_good_pitch, time=last_good_day, cone_stars=cone_stars, outdir=outdir)
 
         # If it is roll independent, write out the star hashes here
         if r_data_check['roll_indep']:
-            nom_t_ccd, nom_roll, nom_n_acq, nom_stars = r_data_check['nomdata']
-            best_t_ccd, best_roll, best_n_acq, best_stars = r_data_check['bestdata']
-            nom_id_hash = hashlib.md5(np.sort(nom_stars['AGASC_ID'])).hexdigest()
-            best_id_hash = hashlib.md5(np.sort(best_stars['AGASC_ID'])).hexdigest()
-            if not os.path.exists(os.path.join(outdir, "{}.html".format(nom_id_hash))):
-                nom_stars.write(os.path.join(outdir, "{}.html".format(nom_id_hash)),
-                                format="jsviewer")
-            if not os.path.exists(os.path.join(outdir, "{}.html".format(best_id_hash))):
-                best_stars.write(os.path.join(outdir, "{}.html".format(best_id_hash)),
-                                format="jsviewer")
+            nom_t_ccd, nom_roll, nom_n_acq, nom_stars, nom_id_hash = r_data_check['nomdata']
+            best_t_ccd, best_roll, best_n_acq, best_stars, best_id_hash = r_data_check['bestdata']
 
     for tday in temps:
         # If this has already been defined/done for this day, continue
@@ -334,20 +351,12 @@ def t_ccd_for_attitude(ra, dec, cycle, detector, too, y_offset=0, z_offset=0,
             continue
         t_ccd_roll_data = get_t_ccd_roll(
             ra, dec, cycle, detector, too, y_offset, z_offset,
-            temps[tday]['pitch'], time=temps[tday]['day'], cone_stars=cone_stars)
+            temps[tday]['pitch'], time=temps[tday]['day'], cone_stars=cone_stars, outdir=outdir)
         all_day_rolls = t_ccd_roll_data['rolls']
         all_rolls.update(all_day_rolls)
         cone_stars = t_ccd_roll_data['cone_stars']
-        nom_t_ccd, nom_roll, nom_n_acq, nom_stars = t_ccd_roll_data['nomdata']
-        best_t_ccd, best_roll, best_n_acq, best_stars = t_ccd_roll_data['bestdata']
-        nom_id_hash = hashlib.md5(np.sort(nom_stars['AGASC_ID'])).hexdigest()
-        best_id_hash = hashlib.md5(np.sort(best_stars['AGASC_ID'])).hexdigest()
-        if not os.path.exists(os.path.join(outdir, "{}.html".format(nom_id_hash))):
-            nom_stars.write(os.path.join(outdir, "{}.html".format(nom_id_hash)),
-                            format="jsviewer")
-        if not os.path.exists(os.path.join(outdir, "{}.html".format(best_id_hash))):
-            best_stars.write(os.path.join(outdir, "{}.html".format(best_id_hash)),
-                             format="jsviewer")
+        nom_t_ccd, nom_roll, nom_n_acq, nom_stars, nom_id_hash = t_ccd_roll_data['nomdata']
+        best_t_ccd, best_roll, best_n_acq, best_stars, best_id_hash = t_ccd_roll_data['bestdata']
         temps[tday].update({
                 'nom_roll': nom_roll,
                 'nom_t_ccd': nom_t_ccd,
