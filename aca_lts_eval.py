@@ -96,6 +96,9 @@ def get_options():
     parser.add_argument("--stop",
                         default="2016-12-31",
                         help="Stop time for evaluation of temperatures.  Default 2016-12-31")
+    parser.add_argument("--daystep",
+                        default=1,
+                        help="Step size in days when checking catalogs.  Default 1")
     parser.add_argument("--obsid",
                         help="Obsid for html report.  Just a label; not used to do a database lookup for parameters.")
     parser.add_argument("--debug",
@@ -235,7 +238,7 @@ def get_t_ccd_roll(ra, dec, cycle, detector, too, y_offset, z_offset, pitch, tim
 
 
 def t_ccd_for_attitude(ra, dec, cycle, detector, too, y_offset=0, z_offset=0,
-                       start='2014-09-01', stop='2015-12-31', outdir=None):
+                       start='2014-09-01', stop='2015-12-31', daystep=1, outdir=None):
     # reset the caches at every new attitude
     global T_CCD_CACHE
     T_CCD_CACHE.clear()
@@ -261,7 +264,7 @@ def t_ccd_for_attitude(ra, dec, cycle, detector, too, y_offset=0, z_offset=0,
     #cone_stars['mag_one_sig_err'], cone_stars['mag_one_sig_err2'] = mini_sausage.get_mag_errs(cone_stars)
 
     # get a list of days
-    days = start + np.arange(stop - start)
+    days = start + np.arange(0, stop - start, daystep)
 
     all_rolls = {}
     temps = {}
@@ -414,7 +417,7 @@ def plot_hist_table(t_ccd_table):
 
 def check_update_needed(target, obsdir):
     json_parfile = os.path.join(obsdir, 'obsinfo.json')
-    parlist = ['ra', 'dec', 'y_offset', 'z_offset', 'report_start', 'report_stop']
+    parlist = ['ra', 'dec', 'y_offset', 'z_offset', 'report_start', 'report_stop', 'daystep']
     try:
         pars = json.load(open(json_parfile))
         for par in parlist:
@@ -425,7 +428,7 @@ def check_update_needed(target, obsdir):
 
 
 def make_target_report(ra, dec, cycle, detector, too, y_offset, z_offset,
-                       start, stop, obsdir, obsid=None, debug=False, redo=True):
+                       start, stop, daystep, obsdir, obsid=None, debug=False, redo=True):
     if not os.path.exists(obsdir):
         os.makedirs(obsdir)
     json_parfile = os.path.join(obsdir, 'obsinfo.json')
@@ -441,6 +444,7 @@ def make_target_report(ra, dec, cycle, detector, too, y_offset, z_offset,
             y_offset, z_offset,
             start=start,
             stop=stop,
+            daystep=daystep,
             outdir=obsdir)
         t_ccd_table.write(table_file,
                           format='ascii.fixed_width_two_line')
@@ -450,7 +454,8 @@ def make_target_report(ra, dec, cycle, detector, too, y_offset, z_offset,
         parfile = open(json_parfile, 'w')
         parfile.write(json.dumps({'ra': ra, 'dec': dec, 'obsid': obsid,
                                   'y_offset': y_offset, 'z_offset': z_offset,
-                                  'report_start': start.secs, 'report_stop': stop.secs},
+                                  'report_start': start.secs, 'report_stop': stop.secs,
+                                  'daystep': daystep},
                                  indent=4,
                                  sort_keys=True))
         parfile.close()
@@ -545,6 +550,7 @@ def main():
                                      z_offset=opt.z_offset,
                                      start=DateTime(opt.start),
                                      stop=DateTime(opt.stop),
+                                     daystep=opt.daystep,
                                      obsdir=opt.out,
                                      obsid=opt.obsid,
                                      redo=True,

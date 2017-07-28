@@ -36,6 +36,9 @@ def get_options():
                         help="Start time for roll/temp checks.  Defaults to ~Aug of previous cycle")
     parser.add_argument("--stop",
                         help="Stop time for roll/temp checks.  Default to March past end of cycle.")
+    parser.add_argument("--daystep",
+                        default=1,
+                        type=int)
     parser.add_argument("--redo",
                         action='store_true',
                         help="Redo processing even if complete and up-to-date")
@@ -114,6 +117,7 @@ for t in targets:
                                          t['y_offset'], t['z_offset'],
                                          start=start,
                                          stop=stop,
+                                         daystep=opt.daystep,
                                          obsdir=obsdir,
                                          obsid=t['obsid'],
                                          debug=False,
