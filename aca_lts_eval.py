@@ -335,14 +335,16 @@ def t_ccd_for_attitude(ra, dec, cycle, detector, too, y_offset=0, z_offset=0,
         # If this has already been defined/done for this day, continue
         if 'nom_roll' in temps[tday]:
             continue
-        # If roll independent copy in the value from that solution
+        # If roll independent copy in the value from that solution, but get nominal roll again
+        # for this day
         if r_data_check['roll_indep']:
-            nom_t_ccd, nom_roll, nom_n_acq, nom_stars = r_data_check['nomdata']
-            best_t_ccd, best_roll, best_n_acq, best_stars = r_data_check['bestdata']
+            nom_t_ccd, nroll, nom_n_acq, nom_stars, nom_id_hash = r_data_check['nomdata']
+            best_t_ccd, broll, best_n_acq, best_stars, best_id_hash = r_data_check['bestdata']
+            nom_roll = Ska.Sun.nominal_roll(ra, dec, tday)
             temps[tday].update({
                 'nom_roll': nom_roll,
                 'nom_t_ccd': nom_t_ccd,
-                'best_roll': best_roll,
+                'best_roll': nom_roll,
                 'best_t_ccd': best_t_ccd,
                 'nom_id_hash': nom_id_hash,
                 'best_id_hash': best_id_hash,
