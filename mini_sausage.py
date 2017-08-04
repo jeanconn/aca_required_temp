@@ -4,6 +4,7 @@ warnings.filterwarnings(
     'ignore',
     message="using `oa_ndim == 0` when `op_axes` is NULL is deprecated.*",
     category=DeprecationWarning)
+from itertools import count
 
 import agasc
 import numpy as np
@@ -139,35 +140,31 @@ def check_mag_spoilers(cone_stars, ok, opt):
 
 
 def check_bad_pixels(cone_stars, not_bad, opt):
-    bad_pixels = opt['Body']['Pixels']['BadPixels']
+    bp = opt['Body']['Pixels']['BadPixels']
     # start with big distances
     distance = np.ones(len(cone_stars[not_bad])) * 9999
-    pix_idx = np.zeros(len(cone_stars[not_bad]))
-    if bad_pixels is None:
+    if bp is None:
         full_distance = np.ones(len(cone_stars)) * 9999
         full_distance[not_bad] = distance
         return full_distance
     row, col = cone_stars['row'], cone_stars['col']
-    cand = cone_stars[not_bad]
-    r = row[not_bad]
-    c = col[not_bad]
+    bp = np.array(bp)
+    # Loop over the stars to check each distance to closest bad pixel
     pad = .5 + fixedErrorPad(opt['Type']) * ARC_2_PIX
-    # small number of regions to check; vectorize later
-    for idx, (rmin, rmax, cmin, cmax) in enumerate(bad_pixels):
-        in_reg_r = (r >= (rmin - pad)) & (r <= (rmax + pad))
-        in_reg_c = (c >= (cmin - pad)) & (c <= (cmax + pad))
+    for i, rs, cs in zip(count(), row[not_bad], col[not_bad]):
+        in_reg_r = (rs >= (bp[:,0] - pad)) & (rs <= (bp[:,1] + pad))
+        in_reg_c = (cs >= (bp[:,2] - pad)) & (cs <= (bp[:,3] + pad))
         r_dist = np.min(np.abs(
-                [r - (rmin - pad), r - (rmax + pad)]), axis=0)
+                [rs - (bp[:,0] - pad), rs - (bp[:,1] + pad)]), axis=0)
         r_dist[in_reg_r] = 0
         c_dist = np.min(np.abs(
-                [c - (cmin - pad), c - (cmax + pad)]), axis=0)
+                [cs - (bp[:,2] - pad), cs - (bp[:,3] + pad)]), axis=0)
         c_dist[in_reg_c] = 0
-        # for the nearest manhattan distance, we want the max
-        # of the minimums
-        min_dist = np.max(np.vstack([r_dist, c_dist]), axis=0)
-        idxmatch = np.argmin([distance, min_dist], axis=0) == 1
-        pix_idx[idxmatch] = idx
-        distance = np.min([distance, min_dist], axis=0)
+        # For the nearest manhattan distance we want the max in each axis
+        maxes = np.max(np.vstack([r_dist, c_dist]), axis=0)
+        # And then the minimum of the maxes
+        idxmatch = np.argmin(maxes)
+        distance[i] = maxes[idxmatch]
     full_distance = np.ones(len(cone_stars)) * 9999
     full_distance[not_bad] = distance
     return full_distance
