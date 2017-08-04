@@ -40,6 +40,10 @@ import astropy.units as u
 import acq_char
 import mini_sausage
 
+# Expand the last stage of guide selection in SAUSAGE to get some fainter stars to use them
+# to set a temperature
+mini_sausage.STAR_CHAR['Guide'][-1]['Inertial']['MagLimit'][1] = 11.0
+
 
 PLANNING_LIMIT = -11.5
 EDGE_DIST = 30
