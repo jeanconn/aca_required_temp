@@ -58,7 +58,6 @@ ROLL_TABLE = Table.read(os.path.join(TASK_DATA, 'roll_limits.dat'), format='asci
 # Save temperature calc a combination of stars
 # indexed by hash of agasc ids
 T_CCD_CACHE = {}
-G_T_CCD_CACHE = {}
 
 # Star catalog for an attitude (ignores proper motion)
 CAT_CACHE = {}
