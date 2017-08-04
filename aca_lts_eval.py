@@ -137,9 +137,9 @@ def get_rolldev(pitch):
 
 
 def select_stars(ra, dec, roll, cone_stars):
-    id_key = ("{:.5f}".format(ra),
-              "{:.5f}".format(dec),
-              "{:.5f}".format(roll))
+    id_key = ("{:.3f}".format(ra),
+              "{:.3f}".format(dec),
+              "{:.3f}".format(roll))
     updated_cone_stars = cone_stars
     if id_key not in CAT_CACHE:
         CAT_CACHE[id_key], updated_cone_stars = mini_sausage.select_acq_stars(
@@ -148,8 +148,8 @@ def select_stars(ra, dec, roll, cone_stars):
 
 
 def select_ri_stars(ra, dec, cone_stars):
-    id_key = ("{:.5f}".format(ra),
-              "{:.5f}".format(dec))
+    id_key = ("{:.3f}".format(ra),
+              "{:.3f}".format(dec))
     updated_cone_stars = cone_stars
     if id_key not in RI_CAT_CACHE:
         RI_CAT_CACHE[id_key], updated_cone_stars = mini_sausage.select_acq_stars(
@@ -158,9 +158,9 @@ def select_ri_stars(ra, dec, cone_stars):
 
 
 def select_guide_stars(ra, dec, roll, cone_stars):
-    id_key = ("{:.5f}".format(ra),
-              "{:.5f}".format(dec),
-              "{:.5f}".format(roll))
+    id_key = ("{:.3f}".format(ra),
+              "{:.3f}".format(dec),
+              "{:.3f}".format(roll))
     updated_cone_stars = cone_stars
     if id_key not in G_CAT_CACHE:
         G_CAT_CACHE[id_key], updated_cone_stars = mini_sausage.select_guide_stars(
@@ -169,8 +169,8 @@ def select_guide_stars(ra, dec, roll, cone_stars):
 
 
 def select_ri_guide_stars(ra, dec, cone_stars):
-    id_key = ("{:.5f}".format(ra),
-              "{:.5f}".format(dec))
+    id_key = ("{:.3f}".format(ra),
+              "{:.3f}".format(dec))
     updated_cone_stars = cone_stars
     if id_key not in G_RI_CAT_CACHE:
         G_RI_CAT_CACHE[id_key], updated_cone_stars = mini_sausage.select_guide_stars(
@@ -314,6 +314,11 @@ def t_ccd_for_attitude(ra, dec, cycle, detector, too, y_offset=0, z_offset=0,
     CAT_CACHE.clear()
     global RI_CAT_CACHE
     RI_CAT_CACHE.clear()
+    global G_CAT_CACHE
+    G_CAT_CACHE.clear()
+    global G_RI_CAT_CACHE
+    G_RI_CAT_CACHE.clear()
+
 
     # Load any previously obtained results into cache
     t_ccd_file = os.path.join(outdir, "t_ccd_map.dat")
@@ -321,23 +326,41 @@ def t_ccd_for_attitude(ra, dec, cycle, detector, too, y_offset=0, z_offset=0,
         t_ccd = Table.read(t_ccd_file, format='ascii')
         for row in t_ccd:
             T_CCD_CACHE[row['key']] = (row['t_ccd'], row['n_acqs'])
+
     cat_file = os.path.join(outdir, "cat_map.dat")
     if os.path.exists(cat_file):
         cat = Table.read(cat_file, format="ascii")
         for row in cat:
-            CAT_CACHE[(row['ra'], row['dec'], row['roll'])] = Table.read(
+            CAT_CACHE[("{:.3f}".format(row['ra']),
+                       "{:.3f}".format(row['dec']),
+                       "{:.3f}".format(row['roll']))] = Table.read(
                 os.path.join(outdir, "{}_stars.dat".format(row['hash'])),
                 format='ascii')
     ri_cat_file = os.path.join(outdir, "ri_cat_map.dat")
     if os.path.exists(ri_cat_file):
         cat = Table.read(ri_cat_file, format="ascii")
         for row in cat:
-            RI_CAT_CACHE[(row['ra'], row['dec'])] = Table.read(
+            RI_CAT_CACHE[("{:.3f}".format(row['ra']),
+                          "{:.3f}".format(row['dec']))] = Table.read(
                 os.path.join(outdir, "{}_stars.dat".format(row['hash'])),
                 format='ascii')
-
     gcat_file = os.path.join(outdir, "gcat_map.dat")
+    if os.path.exists(gcat_file):
+        cat = Table.read(gcat_file, format="ascii")
+        for row in cat:
+            G_CAT_CACHE[("{:.3f}".format(row['ra']),
+                         "{:.3f}".format(row['dec']),
+                         "{:.3f}".format(row['roll']))] = Table.read(
+                os.path.join(outdir, "{}_stars.dat".format(row['hash'])),
+                format='ascii')
     g_ri_cat_file = os.path.join(outdir, "g_ri_cat_map.dat")
+    if os.path.exists(g_ri_cat_file):
+        cat = Table.read(g_ri_cat_file, format="ascii")
+        for row in cat:
+            G_RI_CAT_CACHE[("{:.3f}".format(row['ra']),
+                          "{:.3f}".format(row['dec']))] = Table.read(
+                os.path.join(outdir, "{}_stars.dat".format(row['hash'])),
+                format='ascii')
 
     start = DateTime(start)
     stop = DateTime(stop)
