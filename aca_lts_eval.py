@@ -417,8 +417,8 @@ def t_ccd_for_attitude(ra, dec, cycle, detector, too, y_offset=0, z_offset=0,
             nom_roll = Ska.Sun.nominal_roll(ra, dec, tday)
             temps[tday].update({
                 'nom_roll': nom_roll,
-                'nom_t_ccd': np.min([nom['guide_tccd1'], nom['acq_tccd']]),
-                'best_t_ccd': np.min([best['guide_tccd1'], best['acq_tccd']]),
+                'nom_t_ccd': np.min([nom['guide_tccd2'], nom['acq_tccd']]),
+                'best_t_ccd': np.min([best['guide_tccd2'], best['acq_tccd']]),
                 'nom_acq_tccd': nom['acq_tccd'],
                 'nom_gui_5star': nom['guide_tccd1'],
                 'nom_gui_4star': nom['guide_tccd2'],
@@ -445,8 +445,8 @@ def t_ccd_for_attitude(ra, dec, cycle, detector, too, y_offset=0, z_offset=0,
         best = t_ccd_roll_data['bestdata']
         temps[tday].update({
                 'nom_roll': nom['roll'],
-                'nom_t_ccd': np.min([nom['guide_tccd1'], nom['acq_tccd']]),
-                'best_t_ccd': np.min([best['guide_tccd1'], best['acq_tccd']]),
+                'nom_t_ccd': np.min([nom['guide_tccd2'], nom['acq_tccd']]),
+                'best_t_ccd': np.min([best['guide_tccd2'], best['acq_tccd']]),
                 'nom_acq_tccd': nom['acq_tccd'],
                 'nom_gui_5star': nom['guide_tccd1'],
                 'nom_gui_4star': nom['guide_tccd2'],
@@ -686,7 +686,7 @@ def make_target_report(ra, dec, cycle, detector, too, y_offset, z_offset,
     displaycols = masked_table.colnames
     if not debug:
         displaycols = ['day', 'caldate', 'pitch',
-                       'nom_roll', 'nom_acq_tccd', 'nom_gui_5star',
+                       'nom_roll', 'nom_acq_tccd', 'nom_gui_5star', 'nom_gui_4star',
                        'best_roll', 'best_acq_tccd', 'best_gui_5star', 'best_gui_4star', 'best_gui_3star', 'comment']
     page = template.render(time_plot=tfig_html,
                            hist_plot='temperature_hist.png',
