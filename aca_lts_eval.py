@@ -251,7 +251,7 @@ def get_t_ccd_roll(ra, dec, cycle, detector, too, y_offset, z_offset, pitch, tim
         return {'nomdata': nom,
                 'bestdata': best,
                 'rolls': all_rolls,
-                'cone_stars': updated_cone_stars,
+                'cone_stars': cone_stars,
                 'roll_indep': False,
                 'comment': 'nominal is at max'}
     # check off nominal rolls in allowed range for a better catalog / temperature
