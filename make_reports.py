@@ -82,6 +82,13 @@ targets = Table(db.fetchall(query))
 db.conn.close()
 del db
 
+if opt.obsid_file is not None:
+    targets['requested'] = False
+    obsids = Table.read(opt.obsid_file, format='ascii')['obsid']
+    for obsid in obsids:
+        targets['requested'][targets['obsid'] == int(obsid)] = True
+    targets = targets[targets['requested'] == True]
+
 # Remove target attitudes within 1 arcmin
 targ_coord = SkyCoord(targets['ra'], targets['dec'], unit='deg')
 # Use search_around_sky to get matches from the list into itself
@@ -98,12 +105,6 @@ targets.write(os.path.join(OUTDIR, 'requested_targets.txt'),
               format='ascii.fixed_width_two_line')
 
 
-if opt.obsid_file is not None:
-    targets['requested'] = False
-    obsids = Table.read(opt.obsid_file, format='ascii')['obsid']
-    for obsid in obsids:
-        targets['requested'][targets['obsid'] == int(obsid)] = True
-    targets = targets[targets['requested'] == True]
 
 
 stop = DateTime('{}-03-15'.format(2000 + CYCLE))
