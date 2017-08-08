@@ -99,6 +99,8 @@ if opt.stop is not None:
 
 targets['report_start'] = start.secs
 targets['report_stop'] = stop.secs
+targets['daystep'] = opt.daystep
+targets['chandra_aca'] = chandra_aca.__version__
 
 last_data_file = os.path.join(OUTDIR, 'target_table.dat')
 last_data = None
@@ -115,14 +117,15 @@ update_cnt = 0
 
 for t in targets:
     obsdir = os.path.join(OUTDIR, 'obs{:05d}'.format(t['obsid']))
-    if not os.path.exists(obsdir) and opt.only_existing == True:
-        continue
-    if not os.path.exists(obsdir):
+    if not os.path.exists(obsdir) and opt.only_existing == False:
         os.makedirs(obsdir)
     redo = check_update_needed(t, obsdir) or opt.redo
+    # Skip it if it really needs to be redone but we only want existing records
+    if redo and opt.only_existing:
+        continue
     # Use "str() not in last_data.astype('str')" because it looks like last_data['obsid']
     # is sometimes an integer column and sometimes a string column.
-    if redo or last_data is None or str(t['obsid']) not in last_data['obsid'].astype('str'):
+    if redo or last_data is None or str(t['obsid']) not in last_data['obsid'].astype('str') or opt.only_existing:
         update_cnt += 1
         print "Processing {}".format(t['obsid'])
         t_ccd_table = make_target_report(t['ra'], t['dec'],
@@ -137,17 +140,18 @@ for t in targets:
                                          obsid=t['obsid'],
                                          debug=False,
                                          redo=redo)
-        report.append({'obsid': t['obsid'],
-                       'obsdir': obsdir,
-                       'ra': t['ra'],
-                       'dec': t['dec'],
-                       'y_offset': t['y_offset'],
-                       'z_offset': t['z_offset'],
-                       'max_nom_t_ccd': np.nanmax(t_ccd_table['nom_t_ccd']),
-                       'min_nom_t_ccd': np.nanmin(t_ccd_table['nom_t_ccd']),
-                       'max_best_t_ccd': np.nanmax(t_ccd_table['best_t_ccd']),
-                       'min_best_t_ccd': np.nanmin(t_ccd_table['best_t_ccd']),
-                       })
+        if t_ccd_table is not None:
+            report.append({'obsid': t['obsid'],
+                           'obsdir': obsdir,
+                           'ra': t['ra'],
+                           'dec': t['dec'],
+                           'y_offset': t['y_offset'],
+                           'z_offset': t['z_offset'],
+                           'max_nom_t_ccd': np.nanmax(t_ccd_table['nom_t_ccd']),
+                           'min_nom_t_ccd': np.nanmin(t_ccd_table['nom_t_ccd']),
+                           'max_best_t_ccd': np.nanmax(t_ccd_table['best_t_ccd']),
+                           'min_best_t_ccd': np.nanmin(t_ccd_table['best_t_ccd']),
+                           })
 
     else:
         no_update_cnt += 1

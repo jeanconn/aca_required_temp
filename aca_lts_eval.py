@@ -601,12 +601,12 @@ def plot_hist_table(t_ccd_table):
 
 def check_update_needed(target, obsdir):
     json_parfile = os.path.join(obsdir, 'obsinfo.json')
-    parlist = ['ra', 'dec', 'y_offset', 'z_offset', 'report_start', 'report_stop', 'daystep',
-               'chandra_aca']
+    parlist = ['ra', 'dec', 'y_offset', 'z_offset', 'report_start', 'report_stop', 'daystep']
     try:
         pars = json.load(open(json_parfile))
         for par in parlist:
             assert np.allclose(pars[par], target[par], atol=1e-10)
+        assert pars['chandra_aca'] == target['chandra_aca']
     except:
         return True
     return False
@@ -622,6 +622,8 @@ def make_target_report(ra, dec, cycle, detector, too, y_offset, z_offset,
     if not redo and os.path.exists(table_file) and os.path.exists(just_roll_file):
         t_ccd_table = Table.read(table_file, format='ascii.fixed_width_two_line')
         t_ccd_roll = Table.read(just_roll_file, format='ascii.fixed_width_two_line')
+    elif not redo:
+        return None
     else:
         t_ccd_table, t_ccd_roll = t_ccd_for_attitude(
             ra, dec,
