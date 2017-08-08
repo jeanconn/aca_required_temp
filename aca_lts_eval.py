@@ -231,10 +231,10 @@ def get_t_ccd_roll(ra, dec, cycle, detector, too, y_offset, z_offset, pitch, tim
     acq_sel = select_stars(ra_pnt, dec_pnt, nom_roll, cone_stars)
     acq_stars = acq_sel[0]
     guide_sel = select_guide_stars(ra_pnt, dec_pnt, nom_roll, acq_sel[1])
-    cone_stars = guide_sel[1]
-    acq_tccd, nacq = max_temp(time=time, stars=acq_sel[0])
     guide_stars = guide_sel[0]
     guide_stars.sort('MAG_ACA')
+    cone_stars = guide_sel[1]
+    acq_tccd, nacq = max_temp(time=time, stars=acq_stars)
     guide_tccd = t_lose_star(guide_stars[-1]['MAG_ACA']) if len(guide_stars) == 5 else -21
     t_ccd = np.min([acq_tccd, guide_tccd])
     nom = {'roll': nom_roll,
@@ -273,9 +273,9 @@ def get_t_ccd_roll(ra, dec, cycle, detector, too, y_offset, z_offset, pitch, tim
         acq_sel = select_stars(ra_pnt, dec_pnt, roll, cone_stars)
         acq_stars = acq_sel[0]
         guide_sel = select_guide_stars(ra_pnt, dec_pnt, roll, acq_sel[1])
-        acq_tccd, nacq = max_temp(time=time, stars=guide_sel[1])
         guide_stars = guide_sel[0]
         guide_stars.sort('MAG_ACA')
+        acq_tccd, nacq = max_temp(time=time, stars=acq_stars)
         guide_tccd = t_lose_star(guide_stars[-1]['MAG_ACA']) if len(guide_stars) == 5 else -21
         t_ccd = np.min([acq_tccd, guide_tccd])
         all_rolls[roll] = t_ccd
