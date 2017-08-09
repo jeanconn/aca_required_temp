@@ -186,10 +186,7 @@ def get_t_ccd_roll(ra, dec, cycle, detector, too, y_offset, z_offset, pitch, tim
     Loop over possible roll range for this pitch and return best
     and nominal temperature/roll combinations
     """
-    best_roll = None
-    best_t_ccd = None
-    best_stars = None
-    best_n_acq = None
+
     nom_roll = Ska.Sun.nominal_roll(ra, dec, time=time)
     # Round nominal roll to the nearest half degree
     nom_roll = np.round(np.round(nom_roll * 2) / 2., 1)
@@ -258,6 +255,7 @@ def get_t_ccd_roll(ra, dec, cycle, detector, too, y_offset, z_offset, pitch, tim
         off_nom_rolls = np.round(nom_roll) + plus_minus_rolls
     else:
         off_nom_rolls = [np.round(nom_roll)]
+    best_t_ccd = None
     best_is_max = False
     for roll in off_nom_rolls:
         q_pnt = calc_aca_from_targ((ra, dec, roll),
@@ -378,7 +376,6 @@ def t_ccd_for_attitude(ra, dec, cycle, detector, too, y_offset=0, z_offset=0,
 
     all_rolls = {}
     temps = {}
-    roll_indep_data = {}
     # loop over them to see which need data
     last_good_pitch = None
     last_good_day = None
