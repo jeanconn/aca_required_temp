@@ -361,10 +361,17 @@ def t_ccd_for_attitude(ra, dec, cycle, detector, too, y_offset=0, z_offset=0,
     # set the agasc proper motion time to be in the middle of the
     # requested cycle
     lts_mid_time = start + (stop - start) / 2
-
+    # Pad the agasc cone extraction radius by a chunk and extra for pointing offsets
+    # and SI align
+    radius_pad_arcmin = 15 + np.sqrt((3 + (y_offset / 60.))**2
+                                     + (3 + (z_offset / 60.))**2)
+    radius = 1.5 + radius_pad_arcmin / 60.
     # Get stars in this field
-    print "fetching stars a {} {}".format(ra, dec)
-    cone_stars = agasc.get_agasc_cone(ra, dec, radius=3, date=lts_mid_time)
+    cone_stars = agasc.get_agasc_cone(ra, dec, radius=radius, date=lts_mid_time)
+    # Filter cone stars to just columns we need
+    cone_stars = cone_stars[['AGASC_ID', 'RA_PMCORR', 'DEC_PMCORR',
+                             'MAG_ACA', 'MAG_ACA_ERR', 'CLASS', 'POS_ERR',
+                             'ASPQ1', 'ASPQ2', 'ASPQ3', 'COLOR1']]
     if len(cone_stars) == 0:
         raise ValueError("No stars found in 3 degree radius of {} {}".format(ra, dec))
 
