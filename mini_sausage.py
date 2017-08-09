@@ -84,9 +84,9 @@ def check_mag(cone_stars, opt, label):
     too_dim = ((mag + magNSig + opt['Inertial']['MagErrSyst'])
                > np.max(opt['Inertial']['MagLimit']))
     nomag = mag == -9999
-    cone_stars['too_bright_{}'.format(label)] = too_bright
-    cone_stars['too_dim_{}'.format(label)] = too_dim
-    cone_stars['nomag_{}'.format(label)] = nomag
+    #cone_stars['too_bright_{}'.format(label)] = too_bright
+    #cone_stars['too_dim_{}'.format(label)] = too_dim
+    #cone_stars['nomag_{}'.format(label)] = nomag
     return ~too_bright & ~too_dim & ~nomag
 
 
@@ -256,7 +256,7 @@ def check_stage(cone_stars, not_bad, opt, label):
     box_size_arc[box_size_arc > maxBoxArc] = maxBoxArc
     cone_stars['box_size_arc_{}'.format(stype)] = box_size_arc
     bad_box = starBox < (minBoxArc * ARC_2_PIX)
-    cone_stars['bad_box_{}'.format(stype)] = bad_box
+    #cone_stars['bad_box_{}'.format(stype)] = bad_box
 #    if opt['SearchSettings']['DoColumnRegisterCheck']:
 #        badcolumn = check_column(cone_stars, ok & ~mag_spoiled & ~bad_dist, opt, chip_pos)
 #        ok = ok & ~badcolumn
@@ -301,8 +301,8 @@ def select_stage_stars(ra, dec, roll, cone_stars, roll_indep=False, stype='Acq')
 
     # none of these appear stage dependent, but they could be type (guide/acq) dependent
     chip_edge_dist, fov_edge_dist, offchip, outofbounds = check_off_chips(cone_stars, opt)
-    cone_stars['offchip_{}'.format(stype)] = offchip
-    cone_stars['outofbounds_{}'.format(stype)] = outofbounds
+    #cone_stars['offchip_{}'.format(stype)] = offchip
+    #cone_stars['outofbounds_{}'.format(stype)] = outofbounds
     cone_stars['chip_edge_dist_{}'.format(stype)] = chip_edge_dist
     cone_stars['fov_edge_dist_{}'.format(stype)] = fov_edge_dist
     if roll_indep:
@@ -310,26 +310,26 @@ def select_stage_stars(ra, dec, roll, cone_stars, roll_indep=False, stype='Acq')
         cone_stars['fov_edge_dist_{}'.format(stype)] = 2500
 
     bad_mag_error = cone_stars['MAG_ACA_ERR'] > opt['Inertial']['MagErrorTol']
-    cone_stars['bad_mag_error_{}'.format(stype)] = bad_mag_error
+    #cone_stars['bad_mag_error_{}'.format(stype)] = bad_mag_error
 
     bad_pos_error = cone_stars['POS_ERR'] > opt['Inertial']['PosErrorTol']
-    cone_stars['bad_pos_error_{}'.format(stype)] = bad_pos_error
+    #cone_stars['bad_pos_error_{}'.format(stype)] = bad_pos_error
 
     bad_aspq1 = ((cone_stars['ASPQ1'] > np.max(opt['Inertial']['ASPQ1Lim']))
                   | (cone_stars['ASPQ1'] < np.min(opt['Inertial']['ASPQ1Lim'])))
-    cone_stars['bad_aspq1_{}'.format(stype)] = bad_aspq1
+    #cone_stars['bad_aspq1_{}'.format(stype)] = bad_aspq1
 
     bad_aspq2 = ((cone_stars['ASPQ2'] > np.max(opt['Inertial']['ASPQ2Lim']))
                   | (cone_stars['ASPQ2'] < np.min(opt['Inertial']['ASPQ2Lim'])))
-    cone_stars['bad_aspq2_{}'.format(stype)] = bad_aspq2
+    #cone_stars['bad_aspq2_{}'.format(stype)] = bad_aspq2
 
     bad_aspq3 = ((cone_stars['ASPQ3'] > np.max(opt['Inertial']['ASPQ3Lim']))
                   | (cone_stars['ASPQ3'] < np.min(opt['Inertial']['ASPQ3Lim'])))
-    cone_stars['bad_aspq3_{}'.format(stype)] = bad_aspq3
+    #cone_stars['bad_aspq3_{}'.format(stype)] = bad_aspq3
 
 
     nonstellar = cone_stars['CLASS'] != 0
-    cone_stars['nonstellar'] = nonstellar
+    #cone_stars['nonstellar'] = nonstellar
 
     not_bad = (~offchip & ~outofbounds & ~bad_mag_error & ~bad_pos_error
                 & ~nonstellar & ~bad_aspq1 & ~bad_aspq2 & ~bad_aspq3)
