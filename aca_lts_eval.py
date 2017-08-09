@@ -137,42 +137,42 @@ def select_stars(ra, dec, roll, cone_stars):
     id_key = ("{:.3f}".format(ra),
               "{:.3f}".format(dec),
               "{:.3f}".format(roll))
-    updated_cone_stars = cone_stars
     if id_key not in CAT_CACHE:
-        CAT_CACHE[id_key], updated_cone_stars = mini_sausage.select_acq_stars(
-            ra, dec, roll, n=8, cone_stars=cone_stars)
-    return CAT_CACHE[id_key], updated_cone_stars
+        CAT_CACHE[id_key] = mini_sausage.select_acq_stars(
+            ra, dec, roll, n=8, cone_stars=cone_stars)[0]
+    return CAT_CACHE[id_key]
 
 
 def select_ri_stars(ra, dec, cone_stars):
     id_key = ("{:.3f}".format(ra),
               "{:.3f}".format(dec))
-    updated_cone_stars = cone_stars
     if id_key not in RI_CAT_CACHE:
-        RI_CAT_CACHE[id_key], updated_cone_stars = mini_sausage.select_acq_stars(
-            ra, dec, None, n=8, cone_stars=cone_stars, roll_indep=True)
-    return RI_CAT_CACHE[id_key], updated_cone_stars
+        RI_CAT_CACHE[id_key] = mini_sausage.select_acq_stars(
+            ra, dec, None, n=8, cone_stars=cone_stars, roll_indep=True)[0]
+    return RI_CAT_CACHE[id_key]
 
 
 def select_guide_stars(ra, dec, roll, cone_stars):
     id_key = ("{:.3f}".format(ra),
               "{:.3f}".format(dec),
               "{:.3f}".format(roll))
-    updated_cone_stars = cone_stars
     if id_key not in G_CAT_CACHE:
-        G_CAT_CACHE[id_key], updated_cone_stars = mini_sausage.select_guide_stars(
-            ra, dec, roll, n=5, cone_stars=cone_stars)
-    return G_CAT_CACHE[id_key], updated_cone_stars
+        stars = mini_sausage.select_guide_stars(
+            ra, dec, roll, n=5, cone_stars=cone_stars)[0]
+        stars.sort('MAG_ACA')
+        G_CAT_CACHE[id_key] = stars
+    return G_CAT_CACHE[id_key]
 
 
 def select_ri_guide_stars(ra, dec, cone_stars):
     id_key = ("{:.3f}".format(ra),
               "{:.3f}".format(dec))
-    updated_cone_stars = cone_stars
     if id_key not in G_RI_CAT_CACHE:
-        G_RI_CAT_CACHE[id_key], updated_cone_stars = mini_sausage.select_guide_stars(
-            ra, dec, None, n=5, cone_stars=cone_stars, roll_indep=True)
-    return G_RI_CAT_CACHE[id_key], updated_cone_stars
+        stars = mini_sausage.select_guide_stars(
+            ra, dec, None, n=5, cone_stars=cone_stars, roll_indep=True)[0]
+        stars.sort('MAG_ACA')
+        G_RI_CAT_CACHE[id_key] = stars
+    return G_RI_CAT_CACHE[id_key]
 
 
 def t_lose_star(mag, ref_mag=10.3, ref_tccd=-11.5, scale_4c=None):
@@ -204,11 +204,9 @@ def get_t_ccd_roll(ra, dec, cycle, detector, too, y_offset, z_offset, pitch, tim
     # if the offsets are both small, so the pointing attitude is relatively roll-independent
     # check the relatively roll independent circle
     if abs(y_offset) < .3 and abs(z_offset) < .3:
-        guide_sel = select_ri_guide_stars(ra_pnt, dec_pnt, cone_stars)
-        acq_sel = select_ri_stars(ra_pnt, dec_pnt, cone_stars)
-        acq_stars = acq_sel[0]
+        guide_stars = select_ri_guide_stars(ra_pnt, dec_pnt, cone_stars)
+        acq_stars = select_ri_stars(ra_pnt, dec_pnt, cone_stars)
         acq_tccd, nacq = max_temp(time=time, stars=acq_stars)
-        guide_stars = guide_sel[0]
         guide_stars.sort('MAG_ACA')
         guide_tccd = t_lose_star(guide_stars[-1]['MAG_ACA']) if len(guide_stars) == 5 else -21
         t_ccd = np.min([acq_tccd, guide_tccd])
@@ -226,12 +224,9 @@ def get_t_ccd_roll(ra, dec, cycle, detector, too, y_offset, z_offset, pitch, tim
                     'cone_stars': cone_stars,
                     'roll_indep': True,
                     'comment': 'roll-independent'}
-    acq_sel = select_stars(ra_pnt, dec_pnt, nom_roll, cone_stars)
-    acq_stars = acq_sel[0]
-    guide_sel = select_guide_stars(ra_pnt, dec_pnt, nom_roll, acq_sel[1])
-    guide_stars = guide_sel[0]
+    acq_stars = select_stars(ra_pnt, dec_pnt, nom_roll, cone_stars)
+    guide_stars = select_guide_stars(ra_pnt, dec_pnt, nom_roll, cone_stars)
     guide_stars.sort('MAG_ACA')
-    cone_stars = guide_sel[1]
     acq_tccd, nacq = max_temp(time=time, stars=acq_stars)
     guide_tccd = t_lose_star(guide_stars[-1]['MAG_ACA']) if len(guide_stars) == 5 else -21
     t_ccd = np.min([acq_tccd, guide_tccd])
@@ -268,10 +263,8 @@ def get_t_ccd_roll(ra, dec, cycle, detector, too, y_offset, z_offset, pitch, tim
                                    (z_offset / 60.) + (aca_offset_z / 3600.))
         ra_pnt = q_pnt.ra
         dec_pnt = q_pnt.dec
-        acq_sel = select_stars(ra_pnt, dec_pnt, roll, cone_stars)
-        acq_stars = acq_sel[0]
-        guide_sel = select_guide_stars(ra_pnt, dec_pnt, roll, acq_sel[1])
-        guide_stars = guide_sel[0]
+        acq_stars = select_stars(ra_pnt, dec_pnt, roll, cone_stars)
+        guide_stars = select_guide_stars(ra_pnt, dec_pnt, roll, cone_stars)
         guide_stars.sort('MAG_ACA')
         acq_tccd, nacq = max_temp(time=time, stars=acq_stars)
         guide_tccd = t_lose_star(guide_stars[-1]['MAG_ACA']) if len(guide_stars) == 5 else -21
@@ -297,7 +290,7 @@ def get_t_ccd_roll(ra, dec, cycle, detector, too, y_offset, z_offset, pitch, tim
     return {'nomdata': nom,
             'bestdata': best,
             'rolls': all_rolls,
-            'cone_stars': guide_sel[1],
+            'cone_stars': cone_stars,
             'roll_indep': False,
             'comment': comment}
 
@@ -345,20 +338,23 @@ def t_ccd_for_attitude(ra, dec, cycle, detector, too, y_offset=0, z_offset=0,
     if os.path.exists(gcat_file):
         cat = Table.read(gcat_file, format="ascii")
         for row in cat:
-            G_CAT_CACHE[("{:.3f}".format(row['ra']),
-                         "{:.3f}".format(row['dec']),
-                         "{:.3f}".format(row['roll']))] = Table.read(
+            stars = Table.read(
                 os.path.join(outdir, "{}_stars.dat".format(row['hash'])),
                 format='ascii')
+            stars.sort('MAG_ACA')
+            G_CAT_CACHE[("{:.3f}".format(row['ra']),
+                         "{:.3f}".format(row['dec']),
+                         "{:.3f}".format(row['roll']))] = stars
     g_ri_cat_file = os.path.join(outdir, "g_ri_cat_map.dat")
     if os.path.exists(g_ri_cat_file):
         cat = Table.read(g_ri_cat_file, format="ascii")
         for row in cat:
-            G_RI_CAT_CACHE[("{:.3f}".format(row['ra']),
-                          "{:.3f}".format(row['dec']))] = Table.read(
+            stars = Table.read(
                 os.path.join(outdir, "{}_stars.dat".format(row['hash'])),
                 format='ascii')
-
+            stars.sort('MAG_ACA')
+            G_RI_CAT_CACHE[("{:.3f}".format(row['ra']),
+                            "{:.3f}".format(row['dec']))] = stars
     start = DateTime(start)
     stop = DateTime(stop)
 
