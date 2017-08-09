@@ -456,6 +456,7 @@ def t_ccd_for_attitude(ra, dec, cycle, detector, too, y_offset=0, z_offset=0,
                 'best_gui_hash': hashlib.md5(np.sort(best['guide_stars']['AGASC_ID'])).hexdigest(),
                 'comment': r_data_check['comment'],
                 })
+            all_rolls[nom_roll] = np.min([nom['guide_tccd2'], nom['acq_tccd']])
             continue
         t_ccd_roll_data = get_t_ccd_roll(
             ra, dec, cycle, detector, too, y_offset, z_offset,
