@@ -1,20 +1,21 @@
 import warnings
-# Ignore known numexpr.necompiler and table.conditions warning
-warnings.filterwarnings(
-    'ignore',
-    message="using `oa_ndim == 0` when `op_axes` is NULL is deprecated.*",
-    category=DeprecationWarning)
 from itertools import count
 
 import agasc
 import numpy as np
-from astropy.table import Table, Column
 from astropy.coordinates import SkyCoord, search_around_sky
 import astropy.units as u
 from Quaternion import Quat
 from Ska.quatutil import radec2yagzag
 import chandra_aca
 import json
+
+# Ignore known numexpr.necompiler and table.conditions warning
+warnings.filterwarnings(
+    'ignore',
+    message="using `oa_ndim == 0` when `op_axes` is NULL is deprecated.*",
+    category=DeprecationWarning)
+
 
 matlab_char = json.load(open('characteristics.json'))
 STAR_CHAR = matlab_char['FOT_MATLAB_Tools_Characteristics']['Stars']
@@ -92,10 +93,8 @@ def check_mag(cone_stars, opt, label):
 
 def check_mag_spoilers(cone_stars, ok, opt):
     stype = opt['Type']
-    magOneSigError = cone_stars['mag_one_sig_err']
     stderr2 = cone_stars['mag_one_sig_err2']
     fidpad = fieldErrorPad * ARC_2_PIX
-    minsep = opt['Spoiler']['MinSep'] + fidpad
     maxsep = opt['Spoiler']['MaxSep'] + fidpad
     intercept = opt['Spoiler']['Intercept'] + fidpad
     spoilslope = opt['Spoiler']['Slope']
@@ -103,7 +102,6 @@ def check_mag_spoilers(cone_stars, ok, opt):
     magdifflim = opt['Spoiler']['MagDiffLimit']
     if magdifflim == '-_Inf_':
         magdifflim = -1 * np.inf
-    mag = cone_stars['MAG_ACA']
     mag_col = 'mag_spoiled_{}_{}'.format(nSigma, stype)
     mag_spoil_check = 'mag_spoil_check_{}_{}'.format(nSigma, stype)
     if mag_col in cone_stars.columns:
