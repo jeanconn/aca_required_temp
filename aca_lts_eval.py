@@ -36,6 +36,11 @@ warnings.filterwarnings(
 # Expand the last stage of guide selection in SAUSAGE to get some fainter stars to use them
 # to set a temperature
 mini_sausage.STAR_CHAR['Guide'][-1]['Inertial']['MagLimit'][1] = 11.0
+# Disable the "direct catalog search" for spoilers
+for acqstage in mini_sausage.STAR_CHAR['Acq']:
+    acqstage['SearchSettings']['DoSpoilerCheck'] = 0
+for guistage in mini_sausage.STAR_CHAR['Guide']:
+    guistage['SearchSettings']['DoSpoilerCheck'] = 0
 
 
 PLANNING_LIMIT = -11.5
