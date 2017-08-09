@@ -1,19 +1,9 @@
 #!/usr/bin/env python
-
 import os
 import warnings
-# Ignore known numexpr.necompiler and table.conditions warning
-warnings.filterwarnings(
-    'ignore',
-    message="using `oa_ndim == 0` when `op_axes` is NULL is deprecated.*",
-    category=DeprecationWarning)
-
-
-from itertools import count
 import numpy as np
 import agasc
 import jinja2
-import re
 import shutil
 import hashlib
 import matplotlib
@@ -23,22 +13,25 @@ import matplotlib.pyplot as plt
 import json
 import mpld3
 
-from Ska.Matplotlib import plot_cxctime, cxctime2plotdate
+from astropy.table import Table
 
+from Ska.Matplotlib import plot_cxctime, cxctime2plotdate
 from Chandra.Time import DateTime
 import Ska.Sun
-from Ska.quatutil import radec2yagzag
-from Quaternion import Quat
 import chandra_aca
-from chandra_aca import calc_aca_from_targ
+from chandra_aca.transform import calc_aca_from_targ
 from chandra_aca.star_probs import t_ccd_warm_limit, set_acq_model_ms_filter
 from chandra_aca.drift import get_aca_offsets, get_target_aimpoint
 from chandra_aca import dark_model
-from astropy.table import Table
-from astropy.coordinates import SkyCoord, search_around_sky
-import astropy.units as u
-import acq_char
+
 import mini_sausage
+
+# Ignore known numexpr.necompiler and table.conditions warning
+warnings.filterwarnings(
+    'ignore',
+    message="using `oa_ndim == 0` when `op_axes` is NULL is deprecated.*",
+    category=DeprecationWarning)
+
 
 # Expand the last stage of guide selection in SAUSAGE to get some fainter stars to use them
 # to set a temperature
