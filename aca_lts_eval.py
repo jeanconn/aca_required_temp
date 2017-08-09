@@ -191,6 +191,8 @@ def get_t_ccd_roll(ra, dec, cycle, detector, too, y_offset, z_offset, pitch, tim
     best_stars = None
     best_n_acq = None
     nom_roll = Ska.Sun.nominal_roll(ra, dec, time=time)
+    # Round nominal roll to the nearest half degree
+    nom_roll = np.round(np.round(nom_roll * 2) / 2., 1)
     chipx, chipy, chip_id = get_target_aimpoint(time, cycle, detector, too)
     aca_offset_y, aca_offset_z = get_aca_offsets(
         detector, chip_id, chipx, chipy, time, PLANNING_LIMIT - 2)
