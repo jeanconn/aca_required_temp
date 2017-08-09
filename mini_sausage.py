@@ -217,14 +217,17 @@ def check_stage(cone_stars, not_bad, opt, label):
     if not np.any(ok):
         return ok
     nSigma = opt['Spoiler']['SigErrMultiplier']
-    mag_check_col = 'mag_spoil_check_{}_{}'.format(nSigma, stype)
-    if mag_check_col not in cone_stars.columns:
-        cone_stars[mag_check_col] = np.zeros_like(not_bad)
-        cone_stars['mag_spoiled_{}_{}'.format(nSigma, stype)] = np.zeros_like(not_bad)
-    mag_spoiled, checked= check_mag_spoilers(cone_stars, ok, opt)
-    cone_stars[mag_check_col] = cone_stars[mag_check_col] | checked
-    cone_stars['mag_spoiled_{}_{}'.format(nSigma, stype)] = (
-        cone_stars['mag_spoiled_{}_{}'.format(nSigma, stype)] | mag_spoiled)
+    mag_spoiled = ~ok.copy()
+    if ('DoSpoilerCheck' not in opt['SearchSettings']) or (opt['SearchSettings']['DoSpoilerCheck'] == 1):
+
+        mag_check_col = 'mag_spoil_check_{}_{}'.format(nSigma, stype)
+        if mag_check_col not in cone_stars.columns:
+            cone_stars[mag_check_col] = np.zeros_like(not_bad)
+            cone_stars['mag_spoiled_{}_{}'.format(nSigma, stype)] = np.zeros_like(not_bad)
+        mag_spoiled, checked= check_mag_spoilers(cone_stars, ok, opt)
+        cone_stars[mag_check_col] = cone_stars[mag_check_col] | checked
+        cone_stars['mag_spoiled_{}_{}'.format(nSigma, stype)] = (
+            cone_stars['mag_spoiled_{}_{}'.format(nSigma, stype)] | mag_spoiled)
     bad_pix_dist = check_bad_pixels(cone_stars, ok & ~mag_spoiled, opt)
     cone_stars['bad_pix_dist_{}'.format(stype)] = bad_pix_dist
 
@@ -260,7 +263,7 @@ def check_stage(cone_stars, not_bad, opt, label):
 #    if opt['SearchSettings']['DoBminusVCheck']:
 #        badbv = check_bv(cone_stars, ok & ~mag_spoiled & ~bad_dist)
 #        ok = ok & ~badbv
-    return ok & ~mag_spoiled & ~bad_box
+    return ok & ~bad_box & ~mag_spoiled
 
 
 def get_mag_errs(cone_stars, opt):
