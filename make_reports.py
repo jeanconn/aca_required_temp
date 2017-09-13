@@ -141,6 +141,10 @@ for t in targets:
                                          debug=False,
                                          redo=redo)
         if t_ccd_table is not None:
+            nom = t_ccd_table['nom_t_ccd'][~np.isnan(t_ccd_table['nom_t_ccd'])]
+            best = t_ccd_table['best_t_ccd'][~np.isnan(t_ccd_table['best_t_ccd'])]
+            frac_nom_ok = np.count_nonzero(nom >= PLANNING_LIMIT) * 1.0 / len(nom)
+            frac_best_ok = np.count_nonzero(best >= PLANNING_LIMIT) * 1.0 / len(best)
             report.append({'obsid': t['obsid'],
                            'obsdir': obsdir,
                            'ra': t['ra'],
@@ -151,6 +155,8 @@ for t in targets:
                            'min_nom_t_ccd': np.nanmin(t_ccd_table['nom_t_ccd']),
                            'max_best_t_ccd': np.nanmax(t_ccd_table['best_t_ccd']),
                            'min_best_t_ccd': np.nanmin(t_ccd_table['best_t_ccd']),
+                           'frac_nom_ok': frac_nom_ok,
+                           'frac_best_ok': frac_best_ok,
                            })
 
     else:
@@ -166,6 +172,9 @@ for t in targets:
                        'min_nom_t_ccd': previous_record['min_nom_t_ccd'],
                        'max_best_t_ccd': previous_record['max_best_t_ccd'],
                        'min_best_t_ccd': previous_record['min_best_t_ccd'],
+                       'frac_nom_ok': previous_record['frac_nom_ok'],
+                       'frac_best_ok': previous_record['frac_best_ok'],
+
                        })
 
 
@@ -173,7 +182,7 @@ for t in targets:
         # Write out the text file on every loop/target if incremental option set
         report_table = Table(report)['obsid', 'obsdir', 'ra', 'dec', 'y_offset', 'z_offset',
                                      'max_nom_t_ccd', 'min_nom_t_ccd',
-                                     'max_best_t_ccd', 'min_best_t_ccd']
+                                     'max_best_t_ccd', 'min_best_t_ccd', 'frac_nom_ok', 'frac_best_ok']
         report_table.sort('min_nom_t_ccd')
         report_table.write(os.path.join(OUTDIR, "target_table.dat"),
                            format="ascii.fixed_width_two_line")
@@ -181,7 +190,7 @@ for t in targets:
 
 report_table = Table(report)['obsid', 'obsdir', 'ra', 'dec', 'y_offset', 'z_offset',
                              'max_nom_t_ccd', 'min_nom_t_ccd',
-                             'max_best_t_ccd', 'min_best_t_ccd']
+                             'max_best_t_ccd', 'min_best_t_ccd', 'frac_nom_ok', 'frac_best_ok']
 report_table.sort('min_nom_t_ccd')
 report_table.write(os.path.join(OUTDIR, "target_table.dat"),
                    format="ascii.fixed_width_two_line")
@@ -217,7 +226,10 @@ formats = {
     'max_nom_t_ccd': '%5.2f',
     'min_nom_t_ccd': '%5.2f',
     'max_best_t_ccd': '%5.2f',
-    'min_best_t_ccd': '%5.2f'}
+    'min_best_t_ccd': '%5.2f',
+    'frac_nom_ok': '%7.4f',
+    'frac_best_ok': '%7.4f'}
+
 page = template.render(table=report_table,
                        formats=formats,
                        planning_limit=PLANNING_LIMIT,
