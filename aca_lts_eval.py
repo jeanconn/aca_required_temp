@@ -575,7 +575,7 @@ def plot_time_table(t_ccd_table):
                  'b.',
                  label='best roll t ccd')
     plt.grid()
-    plt.ylim(ymin=COLD_T_CCD, ymax=WARM_T_CCD + 3.0)
+    plt.ylim(ymin=COLD_T_CCD, ymax=WARM_T_CCD + 5.0)
     plt.xlim(xmin=cxctime2plotdate([day_secs[0]]),
              xmax=cxctime2plotdate([day_secs[-1]]))
     plt.legend(loc='upper left', title="", numpoints=1, handlelength=.5)
