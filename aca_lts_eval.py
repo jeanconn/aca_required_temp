@@ -545,11 +545,11 @@ def t_ccd_for_attitude(ra, dec, cycle, detector, too, y_offset=0, z_offset=0,
     if len(g_ri_cats):
         Table(g_ri_cats)[['ra', 'dec', 'hash']].write(g_ri_cat_file, format='ascii')
 
-
+    catcols = ['AGASC_ID', 'RA_PMCORR', 'DEC_PMCORR', 'MAG_ACA', 'MAG_ACA_ERR', 'COLOR1', 'ASPQ1']
     for h in hashes:
         starfile = os.path.join(outdir, "{}_stars.dat".format(h))
-        hashes[h].write(starfile, format='ascii')
-        hashes[h].write(os.path.join(outdir, "{}.html".format(h)),
+        hashes[h][catcols].write(starfile, format='ascii')
+        hashes[h][catcols].write(os.path.join(outdir, "{}.html".format(h)),
                         format='jsviewer')
 
     return t_ccd_table, t_ccd_roll
