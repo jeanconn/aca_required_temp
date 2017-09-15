@@ -711,8 +711,8 @@ def make_target_report(ra, dec, cycle, detector, too, y_offset, z_offset,
     displaycols = masked_table.colnames
     if not debug:
         displaycols = ['day', 'caldate', 'pitch',
-                       'nom_roll', 'nom_acq_tccd', 'nom_gui_5star', 'nom_gui_4star',
-                       'best_roll', 'best_acq_tccd', 'best_gui_5star', 'best_gui_4star', 'best_gui_3star', 'comment']
+                       'nom_roll', 'nom_t_ccd', 'nom_acq_tccd', 'nom_gui_4star',
+                       'best_roll', 'best_t_ccd', 'best_acq_tccd', 'best_gui_4star', 'comment']
     page = template.render(time_plot=tfig_html,
                            hist_plot='temperature_hist.png',
                            table=masked_table,
