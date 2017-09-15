@@ -211,6 +211,7 @@ def get_t_ccd_roll(ra, dec, cycle, detector, too, y_offset, z_offset, pitch, tim
         t_ccd = np.min([acq_tccd, guide_tccd])
         if t_ccd >= WARM_T_CCD:
             nom = {'roll': nom_roll,
+                   'q_pnt': q_pnt,
                    'acq_tccd': acq_tccd,
                    'guide_tccd1': t_lose_star(guide_stars[4]['MAG_ACA']) if len(guide_stars) == 5 else -21,
                    'guide_tccd2': t_lose_star(guide_stars[3]['MAG_ACA']) if len(guide_stars) >= 4 else -21,
@@ -230,6 +231,7 @@ def get_t_ccd_roll(ra, dec, cycle, detector, too, y_offset, z_offset, pitch, tim
     guide_tccd = t_lose_star(guide_stars[3]['MAG_ACA']) if len(guide_stars) >= 4 else -21
     t_ccd = np.min([acq_tccd, guide_tccd])
     nom = {'roll': nom_roll,
+           'q_pnt': q_pnt,
            'acq_tccd': acq_tccd,
            'guide_tccd1': t_lose_star(guide_stars[4]['MAG_ACA']) if len(guide_stars) == 5 else -21,
            'guide_tccd2': t_lose_star(guide_stars[3]['MAG_ACA']) if len(guide_stars) >= 4 else -21,
@@ -274,6 +276,7 @@ def get_t_ccd_roll(ra, dec, cycle, detector, too, y_offset, z_offset, pitch, tim
             if best_t_ccd is None or t_ccd > best_t_ccd:
                 best_t_ccd = t_ccd
                 best = {'roll': roll,
+                        'q_pnt': q_pnt,
                         'acq_tccd': acq_tccd,
                         'guide_tccd1': t_lose_star(guide_stars[4]['MAG_ACA']) if len(guide_stars) == 5 else -21,
                         'guide_tccd2': t_lose_star(guide_stars[3]['MAG_ACA']) if len(guide_stars) >= 4 else -21,
@@ -468,6 +471,20 @@ def t_ccd_for_attitude(ra, dec, cycle, detector, too, y_offset=0, z_offset=0,
         cone_stars = t_ccd_roll_data['cone_stars']
         nom = t_ccd_roll_data['nomdata']
         best = t_ccd_roll_data['bestdata']
+
+        for roll, q in zip([nom['roll'], best['roll']], [nom['q_pnt'], best['q_pnt']]):
+            attfile = open(os.path.join(outdir, "roll_{:06.2f}.json".format(roll)), 'w')
+            attfile.write(json.dumps({'ra': q.ra,
+                                      'dec': q.dec,
+                                      'roll': q.roll,
+                                      'q1': q.q[0],
+                                      'q2': q.q[1],
+                                      'q3': q.q[2],
+                                      'q4': q.q[3]},
+                                     indent=4,
+                                     sort_keys=True))
+            attfile.close()
+
         temps[tday].update({
                 'nom_roll': nom['roll'],
                 'nom_t_ccd': np.min([nom['guide_tccd2'], nom['acq_tccd']]),
