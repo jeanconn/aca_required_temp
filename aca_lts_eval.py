@@ -393,6 +393,7 @@ def t_ccd_for_attitude(ra, dec, cycle, detector, too, y_offset=0, z_offset=0,
                 'day': day[0:8],
                 'caldate': DateTime(day).caldate[4:9],
                 'pitch': day_pitch,
+                'roll_range': np.nan,
                 'nom_roll': np.nan,
                 'nom_t_ccd': np.nan,
                 'nom_acq_tccd': np.nan,
@@ -414,7 +415,8 @@ def t_ccd_for_attitude(ra, dec, cycle, detector, too, y_offset=0, z_offset=0,
             temps["{}".format(day[0:8])] = {
                 'day': day[0:8],
                 'caldate': DateTime(day).caldate[4:9],
-                'pitch': day_pitch}
+                'pitch': day_pitch,
+                'roll_range': get_rolldev(day_pitch)}
             last_good_day = day
             last_good_pitch = day_pitch
 
@@ -485,7 +487,7 @@ def t_ccd_for_attitude(ra, dec, cycle, detector, too, y_offset=0, z_offset=0,
                 'best_gui_hash': hashlib.md5(np.sort(best['guide_stars']['AGASC_ID'])).hexdigest(),
                 'comment': r_data_check['comment'],
                 })
-    t_ccd_table = Table(temps.values())['day', 'caldate', 'pitch',
+    t_ccd_table = Table(temps.values())['day', 'caldate', 'pitch', 'roll_range',
                                         'nom_roll', 'nom_t_ccd', 'nom_acq_tccd', 'nom_gui_5star', 'nom_gui_4star','nom_gui_3star',
                                         'best_roll', 'best_t_ccd', 'best_acq_tccd', 'best_gui_5star','best_gui_4star', 'best_gui_3star',
                                         'nom_acq_hash', 'best_acq_hash',
@@ -675,6 +677,7 @@ def make_target_report(ra, dec, cycle, detector, too, y_offset, z_offset,
     jinja_env.line_statement_prefix = '#'
     template = jinja_env.get_template('target.html')
     t_ccd_table['pitch'].format = '.2f'
+    t_ccd_table['roll_range'].format = '.1f'
     t_ccd_table['nom_roll'].format = '.2f'
     t_ccd_table['nom_t_ccd'].format = '.2f'
     t_ccd_table['nom_acq_tccd'].format = '.2f'
@@ -690,6 +693,7 @@ def make_target_report(ra, dec, cycle, detector, too, y_offset, z_offset,
     formats = {'day': '%s',
                'caldate': '%s',
                'pitch': '%5.2f',
+               'roll_range': '%3.1f',
                'nom_roll': '%5.2f',
                'nom_t_ccd': '%5.2f',
                'nom_acq_tccd': '%5.2f',
@@ -710,7 +714,7 @@ def make_target_report(ra, dec, cycle, detector, too, y_offset, z_offset,
     masked_table = t_ccd_table[~np.isnan(t_ccd_table['nom_t_ccd'])]
     displaycols = masked_table.colnames
     if not debug:
-        displaycols = ['day', 'caldate', 'pitch',
+        displaycols = ['day', 'caldate', 'pitch', 'roll_range',
                        'nom_roll', 'nom_t_ccd', 'nom_acq_tccd', 'nom_gui_4star',
                        'best_roll', 'best_t_ccd', 'best_acq_tccd', 'best_gui_4star', 'comment']
     page = template.render(time_plot=tfig_html,
