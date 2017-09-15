@@ -29,9 +29,9 @@ def get_options():
     parser.add_argument("--out",
                        default="out")
     parser.add_argument("--cycle",
-                        default=18)
+                        default=19)
     parser.add_argument("--planning-limit",
-                        default=-11.5,
+                        default=-10.2,
                         type=float)
     parser.add_argument("--start",
                         help="Start time for roll/temp checks.  Defaults to ~Aug of previous cycle")
