@@ -183,7 +183,7 @@ for t in targets:
         report_table = Table(report)['obsid', 'obsdir', 'ra', 'dec', 'y_offset', 'z_offset',
                                      'max_nom_t_ccd', 'min_nom_t_ccd',
                                      'max_best_t_ccd', 'min_best_t_ccd', 'frac_nom_ok', 'frac_best_ok']
-        report_table.sort('min_nom_t_ccd')
+        report_table.sort('frac_best_ok')
         report_table.write(os.path.join(OUTDIR, "target_table.dat"),
                            format="ascii.fixed_width_two_line")
 
@@ -191,7 +191,7 @@ for t in targets:
 report_table = Table(report)['obsid', 'obsdir', 'ra', 'dec', 'y_offset', 'z_offset',
                              'max_nom_t_ccd', 'min_nom_t_ccd',
                              'max_best_t_ccd', 'min_best_t_ccd', 'frac_nom_ok', 'frac_best_ok']
-report_table.sort('min_nom_t_ccd')
+report_table.sort('frac_best_ok')
 report_table.write(os.path.join(OUTDIR, "target_table.dat"),
                    format="ascii.fixed_width_two_line")
 
