@@ -43,10 +43,10 @@ for guistage in mini_sausage.STAR_CHAR['Guide']:
     guistage['SearchSettings']['DoSpoilerCheck'] = 0
 
 
-PLANNING_LIMIT = -11.5
+PLANNING_LIMIT = -10.2
 EDGE_DIST = 30
 COLD_T_CCD = -21
-WARM_T_CCD = -7
+WARM_T_CCD = -5
 # explicitly disable MS filter
 set_acq_model_ms_filter(ms_enabled=False)
 
