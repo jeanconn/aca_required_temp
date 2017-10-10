@@ -1,3 +1,4 @@
+import os
 import warnings
 from itertools import count
 
@@ -17,7 +18,9 @@ warnings.filterwarnings(
     category=DeprecationWarning)
 
 
-matlab_char = json.load(open('characteristics.json'))
+TASK_DATA = os.path.join(os.environ['SKA'], 'data', 'aca_lts_eval')
+CHAR_FILE = os.path.join(TASK_DATA, 'characteristics.json')
+matlab_char = json.load(open(CHAR_FILE))
 STAR_CHAR = matlab_char['FOT_MATLAB_Tools_Characteristics']['Stars']
 
 
