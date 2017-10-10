@@ -54,10 +54,18 @@ so that is the the "best" value an attitude can have.</P>
 <thead><tr>{% for col in displaycols %}<th>{{ col }}</th>{% endfor %}</tr></thead>
 {% for row in table %}<tr>
 {% for col in displaycols -%}
-{% if col == 'nom_t_ccd' -%}
-<td><a href='{{"%s"|format(row['nom_id_hash'])}}.html'>{{"%5.2f"|format(row['nom_t_ccd'])}}</a></td>
-{% elif col == 'best_t_ccd' -%}
-<td><a href='{{"%s"|format(row['best_id_hash'])}}.html'>{{"%5.2f"|format(row['best_t_ccd'])}}</a></td>
+{% if col == 'nom_acq_tccd' -%}
+<td><a href='{{"%s"|format(row['nom_acq_hash'])}}.html'>{{"%5.2f"|format(row['nom_acq_tccd'])}}</a></td>
+{% elif col == 'nom_gui_4star' -%}
+<td><a href='{{"%s"|format(row['nom_gui_hash'])}}.html'>{{"%5.2f"|format(row['nom_gui_4star'])}}</a></td>
+{% elif col == 'best_acq_tccd' -%}
+<td><a href='{{"%s"|format(row['best_acq_hash'])}}.html'>{{"%5.2f"|format(row['best_acq_tccd'])}}</a></td>
+{% elif col == 'best_gui_4star' -%}
+<td><a href='{{"%s"|format(row['best_gui_hash'])}}.html'>{{"%5.2f"|format(row['best_gui_4star'])}}</a></td>
+{% elif col == 'nom_roll' -%}
+<td><a href='{{"roll_%06.2f"|format(row['nom_roll'])}}.json'>{{"%6.2f"|format(row['nom_roll'])}}</a></td>
+{% elif col == 'best_roll' -%}
+<td><a href='{{"roll_%06.2f"|format(row['best_roll'])}}.json'>{{"%6.2f"|format(row['best_roll'])}}</a></td>
 {% else -%}
 <td>{{formats[col]|format(row[col])}}</td>
 {% endif -%}

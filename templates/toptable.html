@@ -6,6 +6,18 @@ table.sortable
 th:not(.sorttable_sorted):not(.sorttable_sorted_reverse):not(.sorttable_nosort):after {
     content: " \25B4\25BE"
 }
+table.sortable tbody {
+    counter-reset: sortabletablescope;
+}
+table.sortable thead tr::before {
+    content: "";
+    display: table-cell;
+}
+table.sortable tbody tr::before {
+    content: counter(sortabletablescope);
+    counter-increment: sortabletablescope;
+    display: table-cell;
+}
 </style>
 <script type='text/javascript' src='sorttable.js'></script>
 </HEAD>
@@ -57,7 +69,7 @@ these targets from {{ start }} to {{ stop }}.  Flagged in Red if maximum tempera
 {% endfor %}
 </table>
 
-Release: {{release}} git sha: {{ gitlabel }} MSF Disabled
+Release: {{release}} git sha: {{ gitlabel }} MSF Disabled : chandra_aca version {{ chandra_aca }}
 
 </BODY>
 </HTML>
