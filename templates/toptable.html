@@ -1,25 +1,40 @@
 <HTML>
 <HEAD>
 <TITLE>{{ label }}</TITLE>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+<script src="https://cxc.cfa.harvard.edu/mta/ASPECT/aca_lts_eval/StickyTableHeaders/js/jquery.stickytableheaders.js"></script>
+<script src="https://cxc.cfa.harvard.edu/mta/ASPECT/aca_lts_eval/StickyTableHeaders/demo/js/jquery.tablesorter.js"></script>
+<script>
+  $(document).ready(function () {
+  // initialize stickyTableHeaders _after_ tablesorter
+  $(".tablesorter").tablesorter();
+  $("table").stickyTableHeaders();
+  });
+  </script>
 <style>
-table.sortable
-th:not(.sorttable_sorted):not(.sorttable_sorted_reverse):not(.sorttable_nosort):after {
-    content: " \25B4\25BE"
+table.tablesorter thead tr .header
+{
+background-image: url(https://cxc.cfa.harvard.edu/mta/ASPECT/aca_lts_eval/StickyTableHeaders/demo/img/bg.gif);
+background-repeat: no-repeat;
+background-position: center right;
+padding-right: 20px;
+cursor: pointer;
 }
-table.sortable tbody {
-    counter-reset: sortabletablescope;
+
+table.tablesorter thead tr .headerSortUp
+{
+background-image: url(https://cxc.cfa.harvard.edu/mta/ASPECT/aca_lts_eval/StickyTableHeaders/demo/img/asc.gif);
 }
-table.sortable thead tr::before {
-    content: "";
-    display: table-cell;
+table.tablesorter thead tr .headerSortDown
+{
+background-image: url(https://cxc.cfa.harvard.edu/mta/ASPECT/aca_lts_eval/StickyTableHeaders/demo/img/desc.gif);
 }
-table.sortable tbody tr::before {
-    content: counter(sortabletablescope);
-    counter-increment: sortabletablescope;
-    display: table-cell;
+table.tablesorter thead tr .headerSortDown, table.tablesorter thead tr .headerSortUp
+{
+color: #000;
 }
+table th { background-color: white; }
 </style>
-<script type='text/javascript' src='sorttable.js'></script>
 </HEAD>
 <BODY>
 
@@ -32,7 +47,7 @@ these targets from {{ start }} to {{ stop }}.  Flagged in Red if maximum tempera
   colder than the current planning limit of {{ planning_limit }}.</P>
 
 
-<table class="sortable" border cellpadding=5>
+<table class="tableWithFloatingHeader tablesorter" border cellpadding=5>
 <thead><tr>{% for col in table.colnames %}<th>{{ col }}</th>{% endfor %}</tr></thead>
 {% for row in table %}<tr>
 {% for col in table.colnames -%}
