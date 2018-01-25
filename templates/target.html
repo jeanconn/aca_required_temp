@@ -5,13 +5,48 @@
 {% else %}
 <TITLE>RA, Dec: {{ ra }}, {{ dec }}</TITLE>
 {% endif %}
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+<script src="https://cxc.cfa.harvard.edu/mta/ASPECT/aca_lts_eval/StickyTableHeaders/js/jquery.stickytableheade
+rs.js"></script>
+<script src="https://cxc.cfa.harvard.edu/mta/ASPECT/aca_lts_eval/StickyTableHeaders/demo/js/jquery.tablesorter
+.js"></script>
+<script>
+  $(document).ready(function () {
+  // initialize stickyTableHeaders _after_ tablesorter
+  $(".tablesorter").tablesorter();
+  $("table").stickyTableHeaders();
+  });
+  </script>
 <style>
-table.sortable
-th:not(.sorttable_sorted):not(.sorttable_sorted_reverse):not(.sorttable_nosort):after {
-    content: " \25B4\25BE"
+table.tablesorter thead tr .header
+{
+background-image:
+url(https://cxc.cfa.harvard.edu/mta/ASPECT/aca_lts_eval/StickyTableHeaders/demo/img/bg.gif);
+background-repeat: no-repeat;
+background-position: center right;
+padding-right: 20px;
+cursor: pointer;
 }
+
+table.tablesorter thead tr .headerSortUp
+{
+background-image:
+url(https://cxc.cfa.harvard.edu/mta/ASPECT/aca_lts_eval/StickyTableHeaders/demo/img/asc.gif)
+;
+}
+table.tablesorter thead tr .headerSortDown
+{
+background-image:
+url(https://cxc.cfa.harvard.edu/mta/ASPECT/aca_lts_eval/StickyTableHeaders/demo/img/desc.gif
+);
+}
+table.tablesorter thead tr .headerSortDown, table.tablesorter thead tr .headerSortUp
+{
+color: #000;
+}
+table th { background-color: white; }
 </style>
-<script type='text/javascript' src='sorttable.js'></script>
+
 </HEAD>
 <BODY>
 
@@ -50,7 +85,7 @@ so that is the the "best" value an attitude can have.</P>
 </TR>
 </TABLE>
 
-<table class="sortable" border cellpadding=5>
+<table class="tableWithFloatingHeader tablesorter" border cellpadding=5>
 <thead><tr>{% for col in displaycols %}<th>{{ col }}</th>{% endfor %}</tr></thead>
 {% for row in table %}<tr>
 {% for col in displaycols -%}

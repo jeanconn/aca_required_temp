@@ -675,19 +675,6 @@ def make_target_report(ra, dec, cycle, detector, too, y_offset, z_offset,
     plt.close(tfig)
     plt.close(hfig)
 
-    #jinja_env = jinja2.Environment(
-    #    loader=jinja2.FileSystemLoader(
-    #        os.path.join(os.environ['SKA'], 'data', 'mica', 'templates')))
-
-    #html_table = masked_table.pformat(html=True, max_width=-1, max_lines=-1)
-    ## customize table for sorttable
-    #html_table[0] = '<table class="sortable" border cellpadding=5>'
-    #html_table[1] = re.sub('<th>caldate</th>',
-    #                       '<th class="sorttable_nosort">caldate</th>',
-    #                       html_table[1])
-    if not os.path.exists(os.path.join(obsdir, 'sorttable.js')):
-        shutil.copy(os.path.join(TASK_DATA, 'sorttable.js'), obsdir)
-
     jinja_env = jinja2.Environment(
         loader=jinja2.FileSystemLoader(os.path.join(TASK_DATA, 'templates')))
     jinja_env.line_comment_prefix = '##'
