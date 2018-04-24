@@ -45,7 +45,7 @@ for guistage in mini_sausage.STAR_CHAR['Guide']:
 
 PLANNING_LIMIT = -10.2
 EDGE_DIST = 30
-COLD_T_CCD = -21
+COLD_T_CCD = -16
 WARM_T_CCD = -5
 # explicitly disable MS filter
 set_acq_model_ms_filter(ms_enabled=False)
@@ -121,7 +121,8 @@ def max_temp(time, stars):
             colors=stars['COLOR1'],
             min_n_acq=(2, 8e-3),
             cold_t_ccd=COLD_T_CCD,
-            warm_t_ccd=WARM_T_CCD)
+            warm_t_ccd=WARM_T_CCD,
+            model='spline')
 #        print "calc temp for ", id_hash
 #    else:
 #        print "cached temp for ", id_hash
