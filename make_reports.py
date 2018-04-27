@@ -20,7 +20,7 @@ warnings.filterwarnings(
     message="using `oa_ndim == 0` when `op_axes` is NULL is deprecated.*",
     category=DeprecationWarning)
 
-RELEASE_VERSION = '2.1.0'
+RELEASE_VERSION = '2.2.0'
 
 def get_options():
     import argparse
@@ -31,7 +31,7 @@ def get_options():
     parser.add_argument("--cycle",
                         default=19)
     parser.add_argument("--planning-limit",
-                        default=-10.9,
+                        default=-10.2,
                         type=float)
     parser.add_argument("--start",
                         help="Start time for roll/temp checks.  Defaults to ~Aug of previous cycle")
