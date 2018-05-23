@@ -112,6 +112,10 @@ def get_options():
 
 
 def max_temp(time, stars):
+    # Sort these by mag to assign big boxes to first 3
+    stars.sort('MAG_ACA')
+    halfwidths = np.repeat(120, len(stars))
+    halfwidths[0:3] = 160
     id_hash = hashlib.md5(np.sort(stars['AGASC_ID'])).hexdigest()
     if id_hash not in T_CCD_CACHE:
         # Get tuple of (t_ccd, n_acq) for this star field and cache
@@ -119,6 +123,7 @@ def max_temp(time, stars):
             date=time,
             mags=stars['MAG_ACA'],
             colors=stars['COLOR1'],
+            halfwidths=halfwidths,
             min_n_acq=(2, 8e-3),
             cold_t_ccd=COLD_T_CCD,
             warm_t_ccd=WARM_T_CCD,
