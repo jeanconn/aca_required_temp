@@ -178,6 +178,10 @@ def select_ri_guide_stars(ra, dec, cone_stars):
 
 
 def guide_count(mags, tccd=-11.5):
+    """
+    Given mags from guide stars and a temperature, calculate a guide star
+    count using signal-to-noise scaled mag thresholds.
+    """
     thresh1 = snr_mag_for_tccd(tccd, ref_mag=10.0)
     thresh2 = snr_mag_for_tccd(tccd, ref_mag=10.2)
     thresh3 = snr_mag_for_tccd(tccd, ref_mag=10.3)
@@ -189,6 +193,10 @@ def guide_count(mags, tccd=-11.5):
 
 
 def snr_mag_for_tccd(tccd, ref_mag=10.3, ref_tccd=-11.5, scale_4c=None):
+    """
+    Given a tccd, solve for the magnitude that has the same expected signal
+    to noise as ref_mag / ref_tccd.
+    """
     if scale_4c is None:
         scale_4c = dark_model.DARK_SCALE_4C
     return ref_mag - (tccd - ref_tccd) * np.log10(scale_4c) / 1.6
@@ -198,28 +206,16 @@ def t_ccd_for_guide(mags, min_guide_count=4, warm_t_ccd=-5, cold_t_ccd=-16):
     def n_gui_above_min(t_ccd):
         count = guide_count(mags, t_ccd)
         return count - min_guide_count
+    # In the style of chandra_aca.star_probs.t_ccd_warm_limit, use an optimization
+    # strategy to solve for the warmest temperature that still gets the min_guide_count
     merit_func = n_gui_above_min
     if merit_func(warm_t_ccd) >= 0:
-        # If there are enough ACQ stars at the warmest reasonable CCD temperature
-        # then use that temperature.
         t_ccd = warm_t_ccd
     elif merit_func(cold_t_ccd) <= 0:
-        # If there are not enough ACQ stars at the coldest CCD temperature then stop there
-        # as well.  The ACA thermal model will never predict a temperature below this
-        # value so this catalog will fail thermal check.
         t_ccd = cold_t_ccd
     else:
-        # At this point there must be a zero in the range [cold_t_ccd, warm_t_ccd]
         t_ccd = bisect(merit_func, cold_t_ccd, warm_t_ccd, xtol=1e-4, rtol=1e-4)
-
     return t_ccd
-
-
-
-def tccd_snr_star(mag, ref_mag=10.3, ref_tccd=-11.5, scale_4c=None):
-    if scale_4c is None:
-        scale_4c = dark_model.DARK_SCALE_4C
-    return (1.6 * (ref_mag - mag)) / np.log10(scale_4c) + ref_tccd
 
 
 def get_t_ccd_roll(ra, dec, cycle, detector, too, y_offset, z_offset, pitch, time, cone_stars):
