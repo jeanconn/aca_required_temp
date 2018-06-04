@@ -177,7 +177,7 @@ def select_ri_guide_stars(ra, dec, cone_stars):
     return G_RI_CAT_CACHE[id_key]
 
 
-def guide_count(mags, tccd=-11.5):
+def guide_count(mags, tccd=-10.2):
     """
     Given mags from guide stars and a temperature, calculate a guide star
     count using signal-to-noise scaled mag thresholds.
@@ -192,7 +192,7 @@ def guide_count(mags, tccd=-11.5):
     return np.sum(counts)
 
 
-def snr_mag_for_tccd(tccd, ref_mag=10.3, ref_tccd=-11.5, scale_4c=None):
+def snr_mag_for_tccd(tccd, ref_mag=10.3, ref_tccd=-10.2, scale_4c=None):
     """
     Given a tccd, solve for the magnitude that has the same expected signal
     to noise as ref_mag / ref_tccd.
