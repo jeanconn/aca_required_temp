@@ -22,7 +22,9 @@ TASK_DATA = os.path.join(os.environ['SKA'], 'data', 'aca_lts_eval')
 CHAR_FILE = os.path.join(TASK_DATA, 'characteristics.json')
 matlab_char = json.load(open(CHAR_FILE))
 STAR_CHAR = matlab_char['FOT_MATLAB_Tools_Characteristics']['Stars']
-
+# Update the characteristics to change the bright mag hard limit for guide stars to 5.9 from 5.8
+for stage in STAR_CHAR['Guide']:
+    stage['Inertial']['MagLimit'][0] = 5.9
 
 ARC_2_PIX = 1 / STAR_CHAR['General']['Pix2Arc']
 PIX_2_ARC = STAR_CHAR['General']['Pix2Arc']
