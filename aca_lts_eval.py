@@ -21,9 +21,8 @@ import Ska.Sun
 import chandra_aca
 from chandra_aca.transform import calc_aca_from_targ
 from chandra_aca.star_probs import t_ccd_warm_limit, set_acq_model_ms_filter
+from chandra_aca.star_probs import t_ccd_warm_limit_for_guide
 from chandra_aca.drift import get_aca_offsets, get_target_aimpoint
-from chandra_aca import dark_model
-from scipy.optimize import bisect
 
 import mini_sausage
 
@@ -177,47 +176,6 @@ def select_ri_guide_stars(ra, dec, cone_stars):
     return G_RI_CAT_CACHE[id_key]
 
 
-def guide_count(mags, tccd=-10.2):
-    """
-    Given mags from guide stars and a temperature, calculate a guide star
-    count using signal-to-noise scaled mag thresholds.
-    """
-    thresh1 = snr_mag_for_tccd(tccd, ref_mag=10.0)
-    thresh2 = snr_mag_for_tccd(tccd, ref_mag=10.2)
-    thresh3 = snr_mag_for_tccd(tccd, ref_mag=10.3)
-    counts = np.zeros_like(mags)
-    counts[mags <= thresh1] = 1.0
-    counts[(mags <= thresh2) & (mags > thresh1)] = 0.75
-    counts[(mags <= thresh3) & (mags > thresh2)] = 0.5
-    return np.sum(counts)
-
-
-def snr_mag_for_tccd(tccd, ref_mag=10.3, ref_tccd=-10.2, scale_4c=None):
-    """
-    Given a tccd, solve for the magnitude that has the same expected signal
-    to noise as ref_mag / ref_tccd.
-    """
-    if scale_4c is None:
-        scale_4c = dark_model.DARK_SCALE_4C
-    return ref_mag - (tccd - ref_tccd) * np.log10(scale_4c) / 1.6
-
-
-def t_ccd_for_guide(mags, min_guide_count=4, warm_t_ccd=-5, cold_t_ccd=-16):
-    def n_gui_above_min(t_ccd):
-        count = guide_count(mags, t_ccd)
-        return count - min_guide_count
-    # In the style of chandra_aca.star_probs.t_ccd_warm_limit, use an optimization
-    # strategy to solve for the warmest temperature that still gets the min_guide_count
-    merit_func = n_gui_above_min
-    if merit_func(warm_t_ccd) >= 0:
-        t_ccd = warm_t_ccd
-    elif merit_func(cold_t_ccd) <= 0:
-        t_ccd = cold_t_ccd
-    else:
-        t_ccd = bisect(merit_func, cold_t_ccd, warm_t_ccd, xtol=1e-4, rtol=1e-4)
-    return t_ccd
-
-
 def get_t_ccd_roll(ra, dec, cycle, detector, too, y_offset, z_offset, pitch, time, cone_stars):
     """
     Loop over possible roll range for this pitch and return best
@@ -244,7 +202,7 @@ def get_t_ccd_roll(ra, dec, cycle, detector, too, y_offset, z_offset, pitch, tim
         acq_stars = select_ri_stars(ra_pnt, dec_pnt, cone_stars)
         acq_tccd, nacq = max_temp(time=time, stars=acq_stars)
         guide_stars.sort('MAG_ACA')
-        guide_tccd = t_ccd_for_guide(guide_stars['MAG_ACA']) if len(guide_stars) >= 4 else COLD_T_CCD
+        guide_tccd = t_ccd_warm_limit_for_guide(guide_stars['MAG_ACA']) if len(guide_stars) >= 4 else COLD_T_CCD
         t_ccd = np.min([acq_tccd, guide_tccd])
         if t_ccd >= WARM_T_CCD:
             nom = {'roll': nom_roll,
@@ -263,7 +221,7 @@ def get_t_ccd_roll(ra, dec, cycle, detector, too, y_offset, z_offset, pitch, tim
     guide_stars = select_guide_stars(ra_pnt, dec_pnt, nom_roll, cone_stars)
     guide_stars.sort('MAG_ACA')
     acq_tccd, nacq = max_temp(time=time, stars=acq_stars)
-    guide_tccd = t_ccd_for_guide(guide_stars['MAG_ACA']) if len(guide_stars) >= 4 else COLD_T_CCD
+    guide_tccd = t_ccd_warm_limit_for_guide(guide_stars['MAG_ACA']) if len(guide_stars) >= 4 else COLD_T_CCD
     t_ccd = np.min([acq_tccd, guide_tccd])
     nom = {'roll': nom_roll,
            'q_pnt': q_pnt,
@@ -302,7 +260,7 @@ def get_t_ccd_roll(ra, dec, cycle, detector, too, y_offset, z_offset, pitch, tim
         guide_stars = select_guide_stars(ra_pnt, dec_pnt, roll, cone_stars)
         guide_stars.sort('MAG_ACA')
         acq_tccd, nacq = max_temp(time=time, stars=acq_stars)
-        guide_tccd = t_ccd_for_guide(guide_stars['MAG_ACA']) if len(guide_stars) >= 4 else COLD_T_CCD
+        guide_tccd = t_ccd_warm_limit_for_guide(guide_stars['MAG_ACA']) if len(guide_stars) >= 4 else COLD_T_CCD
         t_ccd = np.min([acq_tccd, guide_tccd])
         all_rolls[roll] = t_ccd
         if t_ccd is not None:
