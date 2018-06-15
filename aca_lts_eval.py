@@ -484,7 +484,7 @@ def t_ccd_for_attitude(ra, dec, cycle, detector, too, y_offset=0, z_offset=0,
                 'best_acq_hash': hashlib.md5(np.sort(best['acq_stars']['AGASC_ID'])).hexdigest(),
                 'nom_gui_hash': hashlib.md5(np.sort(nom['guide_stars']['AGASC_ID'])).hexdigest(),
                 'best_gui_hash': hashlib.md5(np.sort(best['guide_stars']['AGASC_ID'])).hexdigest(),
-                'comment': r_data_check['comment'],
+                'comment': t_ccd_roll_data['comment'],
                 })
     t_ccd_table = Table(temps.values())['day', 'caldate', 'pitch', 'roll_range',
                                         'nom_roll', 'nom_t_ccd', 'nom_acq_tccd', 'nom_gui_tccd',
