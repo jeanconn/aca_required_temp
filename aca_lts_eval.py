@@ -21,8 +21,8 @@ import Ska.Sun
 import chandra_aca
 from chandra_aca.transform import calc_aca_from_targ
 from chandra_aca.star_probs import t_ccd_warm_limit, set_acq_model_ms_filter
+from chandra_aca.star_probs import t_ccd_warm_limit_for_guide
 from chandra_aca.drift import get_aca_offsets, get_target_aimpoint
-from chandra_aca import dark_model
 
 import mini_sausage
 
@@ -181,12 +181,6 @@ def select_ri_guide_stars(ra, dec, cone_stars):
     return G_RI_CAT_CACHE[id_key]
 
 
-def t_lose_star(mag, ref_mag=10.3, ref_tccd=-11.5, scale_4c=None):
-    if scale_4c is None:
-        scale_4c = dark_model.DARK_SCALE_4C
-    return (1.6 * (ref_mag - mag)) / np.log10(scale_4c) + ref_tccd
-
-
 def get_t_ccd_roll(ra, dec, cycle, detector, too, y_offset, z_offset, pitch, time, cone_stars):
     """
     Loop over possible roll range for this pitch and return best
@@ -213,15 +207,13 @@ def get_t_ccd_roll(ra, dec, cycle, detector, too, y_offset, z_offset, pitch, tim
         acq_stars = select_ri_stars(ra_pnt, dec_pnt, cone_stars)
         acq_tccd, nacq = max_temp(time=time, stars=acq_stars)
         guide_stars.sort('MAG_ACA')
-        guide_tccd = t_lose_star(guide_stars[3]['MAG_ACA']) if len(guide_stars) >= 4 else -21
+        guide_tccd = t_ccd_warm_limit_for_guide(guide_stars['MAG_ACA']) if len(guide_stars) >= 4 else COLD_T_CCD
         t_ccd = np.min([acq_tccd, guide_tccd])
         if t_ccd >= WARM_T_CCD:
             nom = {'roll': nom_roll,
                    'q_pnt': q_pnt,
                    'acq_tccd': acq_tccd,
-                   'guide_tccd1': t_lose_star(guide_stars[4]['MAG_ACA']) if len(guide_stars) == 5 else -21,
-                   'guide_tccd2': t_lose_star(guide_stars[3]['MAG_ACA']) if len(guide_stars) >= 4 else -21,
-                   'guide_tccd3': t_lose_star(guide_stars[2]['MAG_ACA']) if len(guide_stars) >= 3 else -21,
+                   'guide_tccd': guide_tccd,
                    'acq_stars': acq_stars,
                    'guide_stars': guide_stars}
             return {'nomdata': nom,
@@ -234,14 +226,12 @@ def get_t_ccd_roll(ra, dec, cycle, detector, too, y_offset, z_offset, pitch, tim
     guide_stars = select_guide_stars(ra_pnt, dec_pnt, nom_roll, cone_stars)
     guide_stars.sort('MAG_ACA')
     acq_tccd, nacq = max_temp(time=time, stars=acq_stars)
-    guide_tccd = t_lose_star(guide_stars[3]['MAG_ACA']) if len(guide_stars) >= 4 else -21
+    guide_tccd = t_ccd_warm_limit_for_guide(guide_stars['MAG_ACA']) if len(guide_stars) >= 4 else COLD_T_CCD
     t_ccd = np.min([acq_tccd, guide_tccd])
     nom = {'roll': nom_roll,
            'q_pnt': q_pnt,
            'acq_tccd': acq_tccd,
-           'guide_tccd1': t_lose_star(guide_stars[4]['MAG_ACA']) if len(guide_stars) == 5 else -21,
-           'guide_tccd2': t_lose_star(guide_stars[3]['MAG_ACA']) if len(guide_stars) >= 4 else -21,
-           'guide_tccd3': t_lose_star(guide_stars[2]['MAG_ACA']) if len(guide_stars) >= 3 else -21,
+           'guide_tccd': guide_tccd,
            'acq_stars': acq_stars,
            'guide_stars': guide_stars}
     all_rolls = {nom_roll: t_ccd}
@@ -275,7 +265,7 @@ def get_t_ccd_roll(ra, dec, cycle, detector, too, y_offset, z_offset, pitch, tim
         guide_stars = select_guide_stars(ra_pnt, dec_pnt, roll, cone_stars)
         guide_stars.sort('MAG_ACA')
         acq_tccd, nacq = max_temp(time=time, stars=acq_stars)
-        guide_tccd = t_lose_star(guide_stars[3]['MAG_ACA']) if len(guide_stars) >= 4 else -21
+        guide_tccd = t_ccd_warm_limit_for_guide(guide_stars['MAG_ACA']) if len(guide_stars) >= 4 else COLD_T_CCD
         t_ccd = np.min([acq_tccd, guide_tccd])
         all_rolls[roll] = t_ccd
         if t_ccd is not None:
@@ -284,9 +274,7 @@ def get_t_ccd_roll(ra, dec, cycle, detector, too, y_offset, z_offset, pitch, tim
                 best = {'roll': roll,
                         'q_pnt': q_pnt,
                         'acq_tccd': acq_tccd,
-                        'guide_tccd1': t_lose_star(guide_stars[4]['MAG_ACA']) if len(guide_stars) == 5 else -21,
-                        'guide_tccd2': t_lose_star(guide_stars[3]['MAG_ACA']) if len(guide_stars) >= 4 else -21,
-                        'guide_tccd3': t_lose_star(guide_stars[2]['MAG_ACA']) if len(guide_stars) >= 3 else -21,
+                        'guide_tccd': guide_tccd,
                         'acq_stars': acq_stars,
                         'guide_stars': guide_stars}
                 if abs(roll - np.round(nom_roll)) > (roll_dev - d_roll):
@@ -406,15 +394,11 @@ def t_ccd_for_attitude(ra, dec, cycle, detector, too, y_offset=0, z_offset=0,
                 'nom_roll': np.nan,
                 'nom_t_ccd': np.nan,
                 'nom_acq_tccd': np.nan,
-                'nom_gui_5star': np.nan,
-                'nom_gui_4star': np.nan,
-                'nom_gui_3star': np.nan,
+                'nom_gui_tccd': np.nan,
                 'best_roll': np.nan,
                 'best_t_ccd': np.nan,
                 'best_acq_tccd': np.nan,
-                'best_gui_5star': np.nan,
-                'best_gui_4star': np.nan,
-                'best_gui_3star': np.nan,
+                'best_gui_tccd': np.nan,
                 'nom_acq_hash': '',
                 'nom_gui_hash': '',
                 'best_acq_hash': '',
@@ -450,24 +434,20 @@ def t_ccd_for_attitude(ra, dec, cycle, detector, too, y_offset=0, z_offset=0,
             nom_roll = Ska.Sun.nominal_roll(ra, dec, tday)
             temps[tday].update({
                 'nom_roll': nom_roll,
-                'nom_t_ccd': np.min([nom['guide_tccd2'], nom['acq_tccd']]),
-                'best_t_ccd': np.min([best['guide_tccd2'], best['acq_tccd']]),
+                'nom_t_ccd': np.min([nom['guide_tccd'], nom['acq_tccd']]),
+                'best_t_ccd': np.min([best['guide_tccd'], best['acq_tccd']]),
                 'nom_acq_tccd': nom['acq_tccd'],
-                'nom_gui_5star': nom['guide_tccd1'],
-                'nom_gui_4star': nom['guide_tccd2'],
-                'nom_gui_3star': nom['guide_tccd3'],
+                'nom_gui_tccd': nom['guide_tccd'],
                 'best_roll': best['roll'],
                 'best_acq_tccd': best['acq_tccd'],
-                'best_gui_5star': best['guide_tccd1'],
-                'best_gui_4star': best['guide_tccd2'],
-                'best_gui_3star': best['guide_tccd3'],
+                'best_gui_tccd': best['guide_tccd'],
                 'nom_acq_hash': hashlib.md5(np.sort(nom['acq_stars']['AGASC_ID'])).hexdigest(),
                 'best_acq_hash': hashlib.md5(np.sort(best['acq_stars']['AGASC_ID'])).hexdigest(),
                 'nom_gui_hash': hashlib.md5(np.sort(nom['guide_stars']['AGASC_ID'])).hexdigest(),
                 'best_gui_hash': hashlib.md5(np.sort(best['guide_stars']['AGASC_ID'])).hexdigest(),
                 'comment': r_data_check['comment'],
                 })
-            all_rolls[nom_roll] = np.min([nom['guide_tccd2'], nom['acq_tccd']])
+            all_rolls[nom_roll] = np.min([nom['guide_tccd'], nom['acq_tccd']])
             continue
         t_ccd_roll_data = get_t_ccd_roll(
             ra, dec, cycle, detector, too, y_offset, z_offset,
@@ -493,17 +473,13 @@ def t_ccd_for_attitude(ra, dec, cycle, detector, too, y_offset=0, z_offset=0,
 
         temps[tday].update({
                 'nom_roll': nom['roll'],
-                'nom_t_ccd': np.min([nom['guide_tccd2'], nom['acq_tccd']]),
-                'best_t_ccd': np.min([best['guide_tccd2'], best['acq_tccd']]),
+                'nom_t_ccd': np.min([nom['guide_tccd'], nom['acq_tccd']]),
+                'best_t_ccd': np.min([best['guide_tccd'], best['acq_tccd']]),
                 'nom_acq_tccd': nom['acq_tccd'],
-                'nom_gui_5star': nom['guide_tccd1'],
-                'nom_gui_4star': nom['guide_tccd2'],
-                'nom_gui_3star': nom['guide_tccd3'],
+                'nom_gui_tccd': nom['guide_tccd'],
                 'best_roll': best['roll'],
                 'best_acq_tccd': best['acq_tccd'],
-                'best_gui_5star': best['guide_tccd1'],
-                'best_gui_4star': best['guide_tccd2'],
-                'best_gui_3star': best['guide_tccd3'],
+                'best_gui_tccd': best['guide_tccd'],
                 'nom_acq_hash': hashlib.md5(np.sort(nom['acq_stars']['AGASC_ID'])).hexdigest(),
                 'best_acq_hash': hashlib.md5(np.sort(best['acq_stars']['AGASC_ID'])).hexdigest(),
                 'nom_gui_hash': hashlib.md5(np.sort(nom['guide_stars']['AGASC_ID'])).hexdigest(),
@@ -511,8 +487,8 @@ def t_ccd_for_attitude(ra, dec, cycle, detector, too, y_offset=0, z_offset=0,
                 'comment': r_data_check['comment'],
                 })
     t_ccd_table = Table(temps.values())['day', 'caldate', 'pitch', 'roll_range',
-                                        'nom_roll', 'nom_t_ccd', 'nom_acq_tccd', 'nom_gui_5star', 'nom_gui_4star','nom_gui_3star',
-                                        'best_roll', 'best_t_ccd', 'best_acq_tccd', 'best_gui_5star','best_gui_4star', 'best_gui_3star',
+                                        'nom_roll', 'nom_t_ccd', 'nom_acq_tccd', 'nom_gui_tccd',
+                                        'best_roll', 'best_t_ccd', 'best_acq_tccd', 'best_gui_tccd',
                                         'nom_acq_hash', 'best_acq_hash',
                                         'nom_gui_hash', 'best_gui_hash',
                                         'comment']
@@ -691,13 +667,9 @@ def make_target_report(ra, dec, cycle, detector, too, y_offset, z_offset,
     t_ccd_table['nom_roll'].format = '.2f'
     t_ccd_table['nom_t_ccd'].format = '.2f'
     t_ccd_table['nom_acq_tccd'].format = '.2f'
-    t_ccd_table['nom_gui_5star'].format = '.2f'
-    t_ccd_table['nom_gui_4star'].format = '.2f'
-    t_ccd_table['nom_gui_3star'].format = '.2f'
+    t_ccd_table['nom_gui_tccd'].format = '.2f'
     t_ccd_table['best_acq_tccd'].format = '.2f'
-    t_ccd_table['best_gui_5star'].format = '.2f'
-    t_ccd_table['best_gui_4star'].format = '.2f'
-    t_ccd_table['best_gui_3star'].format = '.2f'
+    t_ccd_table['best_gui_tccd'].format = '.2f'
     t_ccd_table['best_roll'].format = '.2f'
     t_ccd_table['best_t_ccd'].format = '.2f'
     formats = {'day': '%s',
@@ -707,13 +679,9 @@ def make_target_report(ra, dec, cycle, detector, too, y_offset, z_offset,
                'nom_roll': '%5.2f',
                'nom_t_ccd': '%5.2f',
                'nom_acq_tccd': '%5.2f',
-               'nom_gui_5star': '%5.2f',
-               'nom_gui_4star': '%5.2f',
-               'nom_gui_3star': '%5.2f',
+               'nom_gui_tccd': '%5.2f',
                'best_acq_tccd': '%5.2f',
-               'best_gui_5star': '%5.2f',
-               'best_gui_4star': '%5.2f',
-               'best_gui_3star': '%5.2f',
+               'best_gui_tccd': '%5.2f',
                'best_roll': '%5.2f',
                'best_t_ccd': '%5.2f',
                'nom_acq_hash': '%s',
@@ -725,8 +693,8 @@ def make_target_report(ra, dec, cycle, detector, too, y_offset, z_offset,
     displaycols = masked_table.colnames
     if not debug:
         displaycols = ['day', 'caldate', 'pitch', 'roll_range',
-                       'nom_roll', 'nom_t_ccd', 'nom_acq_tccd', 'nom_gui_4star',
-                       'best_roll', 'best_t_ccd', 'best_acq_tccd', 'best_gui_4star', 'comment']
+                       'nom_roll', 'nom_t_ccd', 'nom_acq_tccd', 'nom_gui_tccd',
+                       'best_roll', 'best_t_ccd', 'best_acq_tccd', 'best_gui_tccd', 'comment']
     page = template.render(time_plot=tfig_html,
                            hist_plot='temperature_hist.png',
                            table=masked_table,
