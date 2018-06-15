@@ -368,7 +368,7 @@ def t_ccd_for_attitude(ra, dec, cycle, detector, too, y_offset=0, z_offset=0,
     stop = DateTime(stop)
 
     # set the agasc proper motion time to be in the middle of the
-    # requested cycle
+    # requested interval
     lts_mid_time = start + (stop - start) / 2
     # Pad the agasc cone extraction radius by a chunk and extra for pointing offsets
     # and SI align
