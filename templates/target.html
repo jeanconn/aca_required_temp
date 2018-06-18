@@ -95,12 +95,8 @@ so that is the the "best" value an attitude can have.</P>
   <br/>(<a href='{{"%s"|format(row['nom_acq_hash'])}}.html'>{{"%4.1fA"|format(row['nom_acq_tccd'])}}</a>, <a href='{{"%s"|format(row['nom_gui_hash'])}}.html'>{{"%4.1fG"|format(row['nom_gui_tccd'])}}</a>) </td>
 
 {% elif col == 'pass_t_ccd' -%}
-{% if row['pass_t_ccd'] == 'nan' -%}
-<td>---</td>
-{% else -%}
 <td>{{formats['pass_t_ccd']|format(row['pass_t_ccd'])}}
   <br/>(<a href='{{"%s"|format(row['pass_acq_hash'])}}.html'>{{"%4.1fA"|format(row['pass_acq_tccd'])}}</a>, <a href='{{"%s"|format(row['pass_gui_hash'])}}.html'>{{"%4.1fG"|format(row['pass_gui_tccd'])}}</a>) </td>
-{% endif -%}
 
 {% elif col == 'best_t_ccd' -%}
 <td>{{formats['best_t_ccd']|format(row['best_t_ccd'])}}
