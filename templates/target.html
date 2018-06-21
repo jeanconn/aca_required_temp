@@ -89,16 +89,28 @@ so that is the the "best" value an attitude can have.</P>
 <thead><tr>{% for col in displaycols %}<th>{{ col }}</th>{% endfor %}</tr></thead>
 {% for row in table %}<tr>
 {% for col in displaycols -%}
-{% if col == 'nom_acq_tccd' -%}
-<td><a href='{{"%s"|format(row['nom_acq_hash'])}}.html'>{{"%5.2f"|format(row['nom_acq_tccd'])}}</a></td>
-{% elif col == 'nom_gui_tccd' -%}
-<td><a href='{{"%s"|format(row['nom_gui_hash'])}}.html'>{{"%5.2f"|format(row['nom_gui_tccd'])}}</a></td>
-{% elif col == 'best_acq_tccd' -%}
-<td><a href='{{"%s"|format(row['best_acq_hash'])}}.html'>{{"%5.2f"|format(row['best_acq_tccd'])}}</a></td>
-{% elif col == 'best_gui_tccd' -%}
-<td><a href='{{"%s"|format(row['best_gui_hash'])}}.html'>{{"%5.2f"|format(row['best_gui_tccd'])}}</a></td>
+
+{% if col == 'nom_t_ccd' -%}
+<td>{{formats['nom_t_ccd']|format(row['nom_t_ccd'])}}
+  <br/>(<a href='{{"%s"|format(row['nom_acq_hash'])}}.html'>{{"%4.1fA"|format(row['nom_acq_tccd'])}}</a>, <a href='{{"%s"|format(row['nom_gui_hash'])}}.html'>{{"%4.1fG"|format(row['nom_gui_tccd'])}}</a>) </td>
+
+{% elif col == 'pass_t_ccd' -%}
+<td>{{formats['pass_t_ccd']|format(row['pass_t_ccd'])}}
+  <br/>(<a href='{{"%s"|format(row['pass_acq_hash'])}}.html'>{{"%4.1fA"|format(row['pass_acq_tccd'])}}</a>, <a href='{{"%s"|format(row['pass_gui_hash'])}}.html'>{{"%4.1fG"|format(row['pass_gui_tccd'])}}</a>) </td>
+
+{% elif col == 'best_t_ccd' -%}
+<td>{{formats['best_t_ccd']|format(row['best_t_ccd'])}}
+  <br/>(<a href='{{"%s"|format(row['best_acq_hash'])}}.html'>{{"%4.1fA"|format(row['best_acq_tccd'])}}</a>, <a href='{{"%s"|format(row['best_gui_hash'])}}.html'>{{"%4.1fG"|format(row['best_gui_tccd'])}}</a>) </td>
+
+
 {% elif col == 'nom_roll' -%}
 <td><a href='{{"roll_%06.2f"|format(row['nom_roll'])}}.json'>{{"%6.2f"|format(row['nom_roll'])}}</a></td>
+{% elif col == 'pass_roll' -%}
+{% if row['pass_roll'] is not none -%}
+<td><a href='{{"roll_%06.2f"|format(row['pass_roll'])}}.json'>{{"%6.2f"|format(row['pass_roll'])}}</a></td>
+{% else -%}
+<td>---</td>
+{% endif -%}
 {% elif col == 'best_roll' -%}
 <td><a href='{{"roll_%06.2f"|format(row['best_roll'])}}.json'>{{"%6.2f"|format(row['best_roll'])}}</a></td>
 {% else -%}

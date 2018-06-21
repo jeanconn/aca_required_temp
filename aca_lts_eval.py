@@ -218,6 +218,7 @@ def get_t_ccd_roll(ra, dec, cycle, detector, too, y_offset, z_offset, pitch, tim
                    'guide_stars': guide_stars}
             return {'nomdata': nom,
                     'bestdata': nom,
+                    'passdata': nom,
                     'rolls': {nom_roll: t_ccd},
                     'cone_stars': cone_stars,
                     'roll_indep': True,
@@ -237,9 +238,9 @@ def get_t_ccd_roll(ra, dec, cycle, detector, too, y_offset, z_offset, pitch, tim
     all_rolls = {nom_roll: t_ccd}
     # if nom_t_ccd is WARM_T_CCD, stop now
     if t_ccd >= WARM_T_CCD:
-        best = nom
         return {'nomdata': nom,
-                'bestdata': best,
+                'bestdata': nom,
+                'passdata': nom,
                 'rolls': all_rolls,
                 'cone_stars': cone_stars,
                 'roll_indep': False,
@@ -254,6 +255,8 @@ def get_t_ccd_roll(ra, dec, cycle, detector, too, y_offset, z_offset, pitch, tim
     else:
         off_nom_rolls = [np.round(nom_roll)]
     best_t_ccd = None
+    passing = None
+    pass_t_ccd = None
     best_is_max = False
     for roll in off_nom_rolls:
         q_pnt = calc_aca_from_targ((ra, dec, roll),
@@ -269,6 +272,14 @@ def get_t_ccd_roll(ra, dec, cycle, detector, too, y_offset, z_offset, pitch, tim
         t_ccd = np.min([acq_tccd, guide_tccd])
         all_rolls[roll] = t_ccd
         if t_ccd is not None:
+            if pass_t_ccd is None and t_ccd >= PLANNING_LIMIT:
+                pass_t_ccd = t_ccd
+                passing = {'roll': roll,
+                           'q_pnt': q_pnt,
+                           'acq_tccd': acq_tccd,
+                           'guide_tccd': guide_tccd,
+                           'acq_stars': acq_stars,
+                           'guide_stars': guide_stars}
             if best_t_ccd is None or t_ccd > best_t_ccd:
                 best_t_ccd = t_ccd
                 best = {'roll': roll,
@@ -286,6 +297,7 @@ def get_t_ccd_roll(ra, dec, cycle, detector, too, y_offset, z_offset, pitch, tim
         comment = 'best roll at max offset'
     return {'nomdata': nom,
             'bestdata': best,
+            'passdata': passing,
             'rolls': all_rolls,
             'cone_stars': cone_stars,
             'roll_indep': False,
@@ -356,7 +368,7 @@ def t_ccd_for_attitude(ra, dec, cycle, detector, too, y_offset=0, z_offset=0,
     stop = DateTime(stop)
 
     # set the agasc proper motion time to be in the middle of the
-    # requested cycle
+    # requested interval
     lts_mid_time = start + (stop - start) / 2
     # Pad the agasc cone extraction radius by a chunk and extra for pointing offsets
     # and SI align
@@ -395,12 +407,18 @@ def t_ccd_for_attitude(ra, dec, cycle, detector, too, y_offset=0, z_offset=0,
                 'nom_t_ccd': np.nan,
                 'nom_acq_tccd': np.nan,
                 'nom_gui_tccd': np.nan,
+                'pass_roll': np.nan,
+                'pass_t_ccd': np.nan,
+                'pass_acq_tccd': np.nan,
+                'pass_gui_tccd': np.nan,
                 'best_roll': np.nan,
                 'best_t_ccd': np.nan,
                 'best_acq_tccd': np.nan,
                 'best_gui_tccd': np.nan,
                 'nom_acq_hash': '',
                 'nom_gui_hash': '',
+                'pass_acq_hash': '',
+                'pass_gui_hash': '',
                 'best_acq_hash': '',
                 'best_gui_hash': '',
                 'comment': ''}
@@ -430,20 +448,26 @@ def t_ccd_for_attitude(ra, dec, cycle, detector, too, y_offset=0, z_offset=0,
         if r_data_check['roll_indep']:
             nom = r_data_check['nomdata']
             best = r_data_check['bestdata']
-
+            passing = r_data_check['passdata']
             nom_roll = Ska.Sun.nominal_roll(ra, dec, tday)
             temps[tday].update({
                 'nom_roll': nom_roll,
                 'nom_t_ccd': np.min([nom['guide_tccd'], nom['acq_tccd']]),
-                'best_t_ccd': np.min([best['guide_tccd'], best['acq_tccd']]),
                 'nom_acq_tccd': nom['acq_tccd'],
                 'nom_gui_tccd': nom['guide_tccd'],
+                'nom_acq_hash': hashlib.md5(np.sort(nom['acq_stars']['AGASC_ID'])).hexdigest(),
+                'nom_gui_hash': hashlib.md5(np.sort(nom['guide_stars']['AGASC_ID'])).hexdigest(),
+                'pass_roll': nom_roll,
+                'pass_t_ccd': np.min([passing['guide_tccd'], passing['acq_tccd']]),
+                'pass_acq_tccd': passing['acq_tccd'],
+                'pass_gui_tccd': passing['guide_tccd'],
+                'pass_acq_hash': hashlib.md5(np.sort(passing['acq_stars']['AGASC_ID'])).hexdigest(),
+                'pass_gui_hash': hashlib.md5(np.sort(passing['guide_stars']['AGASC_ID'])).hexdigest(),
+                'best_t_ccd': np.min([best['guide_tccd'], best['acq_tccd']]),
                 'best_roll': best['roll'],
                 'best_acq_tccd': best['acq_tccd'],
                 'best_gui_tccd': best['guide_tccd'],
-                'nom_acq_hash': hashlib.md5(np.sort(nom['acq_stars']['AGASC_ID'])).hexdigest(),
                 'best_acq_hash': hashlib.md5(np.sort(best['acq_stars']['AGASC_ID'])).hexdigest(),
-                'nom_gui_hash': hashlib.md5(np.sort(nom['guide_stars']['AGASC_ID'])).hexdigest(),
                 'best_gui_hash': hashlib.md5(np.sort(best['guide_stars']['AGASC_ID'])).hexdigest(),
                 'comment': r_data_check['comment'],
                 })
@@ -457,7 +481,7 @@ def t_ccd_for_attitude(ra, dec, cycle, detector, too, y_offset=0, z_offset=0,
         cone_stars = t_ccd_roll_data['cone_stars']
         nom = t_ccd_roll_data['nomdata']
         best = t_ccd_roll_data['bestdata']
-
+        passing = t_ccd_roll_data['passdata']
         for roll, q in zip([nom['roll'], best['roll']], [nom['q_pnt'], best['q_pnt']]):
             attfile = open(os.path.join(outdir, "roll_{:06.2f}.json".format(roll)), 'w')
             attfile.write(json.dumps({'ra': q.ra,
@@ -474,23 +498,37 @@ def t_ccd_for_attitude(ra, dec, cycle, detector, too, y_offset=0, z_offset=0,
         temps[tday].update({
                 'nom_roll': nom['roll'],
                 'nom_t_ccd': np.min([nom['guide_tccd'], nom['acq_tccd']]),
-                'best_t_ccd': np.min([best['guide_tccd'], best['acq_tccd']]),
                 'nom_acq_tccd': nom['acq_tccd'],
                 'nom_gui_tccd': nom['guide_tccd'],
+                'nom_acq_hash': hashlib.md5(np.sort(nom['acq_stars']['AGASC_ID'])).hexdigest(),
+                'nom_gui_hash': hashlib.md5(np.sort(nom['guide_stars']['AGASC_ID'])).hexdigest(),
+                'pass_roll': np.nan,
+                'pass_t_ccd': np.nan,
+                'pass_acq_tccd': np.nan,
+                'pass_gui_tccd': np.nan,
+                'pass_acq_hash': '',
+                'pass_gui_hash': '',
                 'best_roll': best['roll'],
+                'best_t_ccd': np.min([best['guide_tccd'], best['acq_tccd']]),
                 'best_acq_tccd': best['acq_tccd'],
                 'best_gui_tccd': best['guide_tccd'],
-                'nom_acq_hash': hashlib.md5(np.sort(nom['acq_stars']['AGASC_ID'])).hexdigest(),
                 'best_acq_hash': hashlib.md5(np.sort(best['acq_stars']['AGASC_ID'])).hexdigest(),
-                'nom_gui_hash': hashlib.md5(np.sort(nom['guide_stars']['AGASC_ID'])).hexdigest(),
                 'best_gui_hash': hashlib.md5(np.sort(best['guide_stars']['AGASC_ID'])).hexdigest(),
-                'comment': r_data_check['comment'],
+                'comment': t_ccd_roll_data['comment'],
+                })
+        if passing is not None:
+            temps[tday].update({
+                'pass_roll': passing['roll'],
+                'pass_t_ccd': np.min([passing['guide_tccd'], passing['acq_tccd']]),
+                'pass_acq_tccd': passing['acq_tccd'],
+                'pass_gui_tccd': passing['guide_tccd'],
+                'pass_acq_hash': hashlib.md5(np.sort(passing['acq_stars']['AGASC_ID'])).hexdigest(),
+                'pass_gui_hash': hashlib.md5(np.sort(passing['guide_stars']['AGASC_ID'])).hexdigest(),
                 })
     t_ccd_table = Table(temps.values())['day', 'caldate', 'pitch', 'roll_range',
-                                        'nom_roll', 'nom_t_ccd', 'nom_acq_tccd', 'nom_gui_tccd',
-                                        'best_roll', 'best_t_ccd', 'best_acq_tccd', 'best_gui_tccd',
-                                        'nom_acq_hash', 'best_acq_hash',
-                                        'nom_gui_hash', 'best_gui_hash',
+                                        'nom_roll', 'nom_t_ccd', 'nom_acq_tccd', 'nom_gui_tccd', 'nom_acq_hash', 'nom_gui_hash',
+                                        'pass_roll', 'pass_t_ccd', 'pass_acq_tccd', 'pass_gui_tccd', 'pass_acq_hash', 'pass_gui_hash',
+                                        'best_roll', 'best_t_ccd', 'best_acq_tccd', 'best_gui_tccd', 'best_acq_hash', 'best_gui_hash',
                                         'comment']
 
     t_ccd_table.sort('day')
@@ -668,6 +706,10 @@ def make_target_report(ra, dec, cycle, detector, too, y_offset, z_offset,
     t_ccd_table['nom_t_ccd'].format = '.2f'
     t_ccd_table['nom_acq_tccd'].format = '.2f'
     t_ccd_table['nom_gui_tccd'].format = '.2f'
+    t_ccd_table['pass_roll'].format = '.2f'
+    t_ccd_table['pass_t_ccd'].format = '.2f'
+    t_ccd_table['pass_acq_tccd'].format = '.2f'
+    t_ccd_table['pass_gui_tccd'].format = '.2f'
     t_ccd_table['best_acq_tccd'].format = '.2f'
     t_ccd_table['best_gui_tccd'].format = '.2f'
     t_ccd_table['best_roll'].format = '.2f'
@@ -680,21 +722,29 @@ def make_target_report(ra, dec, cycle, detector, too, y_offset, z_offset,
                'nom_t_ccd': '%5.2f',
                'nom_acq_tccd': '%5.2f',
                'nom_gui_tccd': '%5.2f',
-               'best_acq_tccd': '%5.2f',
-               'best_gui_tccd': '%5.2f',
+               'nom_acq_hash': '%s',
+               'nom_gui_hash': '%s',
+               'pass_roll': '%5.2f',
+               'pass_t_ccd': '%5.2f',
+               'pass_acq_tccd': '%5.2f',
+               'pass_gui_tccd': '%5.2f',
+               'pass_acq_hash': '%s',
+               'pass_gui_hash': '%s',
                'best_roll': '%5.2f',
                'best_t_ccd': '%5.2f',
-               'nom_acq_hash': '%s',
+               'best_acq_tccd': '%5.2f',
+               'best_gui_tccd': '%5.2f',
                'best_acq_hash': '%s',
-               'nom_gui_hash': '%s',
                'best_gui_hash': '%s',
                'comment': '%s'}
     masked_table = t_ccd_table[~np.isnan(t_ccd_table['nom_t_ccd'])]
     displaycols = masked_table.colnames
     if not debug:
         displaycols = ['day', 'caldate', 'pitch', 'roll_range',
-                       'nom_roll', 'nom_t_ccd', 'nom_acq_tccd', 'nom_gui_tccd',
-                       'best_roll', 'best_t_ccd', 'best_acq_tccd', 'best_gui_tccd', 'comment']
+                       'nom_roll', 'nom_t_ccd',
+                       'pass_roll', 'pass_t_ccd',
+                       'best_roll', 'best_t_ccd', 'comment']
+
     page = template.render(time_plot=tfig_html,
                            hist_plot='temperature_hist.png',
                            table=masked_table,
