@@ -90,8 +90,8 @@ if opt.obsid_file is not None:
     targets = targets[targets['requested'] == True]
 
 
-stop = DateTime('{}-03-15'.format(2000 + CYCLE))
-start = stop - (365 + 210)
+stop = DateTime('{}-05-15'.format(2000 + CYCLE))
+start = stop - (365 + 270)
 if opt.start is not None:
     start = DateTime(opt.start)
 if opt.stop is not None:
