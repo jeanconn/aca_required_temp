@@ -43,7 +43,7 @@ for acqstage in mini_sausage.STAR_CHAR['Acq']:
 for guistage in mini_sausage.STAR_CHAR['Guide']:
     guistage['SearchSettings']['DoSpoilerCheck'] = 0
 
-
+MAN_ERR = None
 PLANNING_LIMIT = -10.2
 EDGE_DIST = 30
 COLD_T_CCD = -16
@@ -103,6 +103,14 @@ def get_options():
     parser.add_argument("--obsid",
                         default="Abell2146",
                         help="Obsid for html report.  Just a label; not used to do a database lookup for parameters.")
+    parser.add_argument("--man-err",
+                        default=60,
+                        type=float,
+                        help="Maneuver error used for box selection")
+    parser.add_argument("--dither",
+                        default=8,
+                        type=float,
+                        help="Dither used for star selection")
     parser.add_argument("--debug",
                         action="store_true")
     opt = parser.parse_args()
@@ -123,6 +131,9 @@ def max_temp(time, stars):
     stars.sort('MAG_ACA')
     halfwidths = np.repeat(120, len(stars))
     halfwidths[0:3] = 160
+    # If there is tiny maneuver error, use only small boxes
+    if MAN_ERR < 5:
+        halfwidths = np.repeat(60, len(stars))
     id_hash = hashlib.md5(np.sort(stars['AGASC_ID'])).hexdigest()
     if id_hash not in T_CCD_CACHE:
         # Get tuple of (t_ccd, n_acq) for this star field and cache
@@ -747,6 +758,10 @@ def main():
     Determine required ACA temperature for an attitude over a time range
     """
     opt = get_options()
+    mini_sausage.set_dither(opt.dither)
+    mini_sausage.set_manvr_error(opt.man_err)
+    global MAN_ERR
+    MAN_ERR = opt.man_err
     t_ccd_table = make_target_report(opt.ra, opt.dec,
                                      cycle=opt.cycle,
                                      detector=opt.detector,
