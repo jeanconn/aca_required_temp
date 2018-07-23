@@ -261,7 +261,7 @@ def get_t_ccd_roll(ra, dec, cycle, detector, too, pitch, time, cone_stars):
     pass_t_ccd = None
     best_is_max = False
     for roll in off_nom_rolls:
-        y_offset, z_offset = offsets_for_roll(nom_roll)
+        y_offset, z_offset = offsets_for_roll(roll)
         q_pnt = calc_aca_from_targ((ra, dec, roll),
                                    (y_offset / 60.) + (aca_offset_y / 3600.),
                                    (z_offset / 60.) + (aca_offset_z / 3600.))
