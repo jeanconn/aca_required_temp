@@ -118,6 +118,10 @@ def get_options():
 
 
 def offsets_for_roll(roll):
+    if roll < 0:
+        roll = roll + 360
+    if roll > 360:
+        roll = roll - 360
     roll_table = Table.read(
         os.path.join(TASK_DATA, "abell_2146_offsets.dat"),
         format='ascii',
