@@ -29,7 +29,7 @@ def get_options():
     parser.add_argument("--out",
                        default="out")
     parser.add_argument("--cycle",
-                        default=19)
+                        default=20)
     parser.add_argument("--planning-limit",
                         default=-10.2,
                         type=float)
@@ -90,7 +90,7 @@ if opt.obsid_file is not None:
     targets = targets[targets['requested'] == True]
 
 
-stop = DateTime('{}-05-15'.format(2000 + CYCLE))
+stop = DateTime('{}-04-01'.format(2000 + CYCLE))
 start = stop - (365 + 270)
 if opt.start is not None:
     start = DateTime(opt.start)
