@@ -20,7 +20,7 @@ warnings.filterwarnings(
     message="using `oa_ndim == 0` when `op_axes` is NULL is deprecated.*",
     category=DeprecationWarning)
 
-RELEASE_VERSION = '2.3.0'
+RELEASE_VERSION = '2.3.1'
 
 def get_options():
     import argparse
