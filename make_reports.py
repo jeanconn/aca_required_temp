@@ -66,7 +66,7 @@ TASK_DATA = os.path.join(os.environ['SKA'], 'data', 'aca_lts_eval')
 db = DBI(dbi='sybase', server='sqlsao', database='axafocat', user='aca_ops')
 query = """SELECT t.obsid, t.ra, t.dec,
 t.type, t.y_det_offset as y_offset, t.z_det_offset as z_offset, 
-t.approved_exposure_time, t.instrument, t.grating, t.obs_ao_str, p.ao_str
+t.approved_exposure_time, t.instrument, t.grating, t.dither_flag, t.obs_ao_str, p.ao_str
 FROM target t
 right join prop_info p on t.ocat_propid = p.ocat_propid
 WHERE
@@ -78,8 +78,32 @@ ORDER BY t.obsid"""
 targets = Table(db.fetchall(query))
 db.conn.close()
 del db
+
+# Get actual dither from the database
+dither_column = targets['dither_flag']
+targets.remove_column('dither_flag')
+dither_y = np.zeros(len(targets))
+dither_z = np.zeros(len(targets))
+dither_y[(targets['instrument'] == 'ACIS-S') | (targets['instrument'] == 'ACIS-I')] = 8
+dither_z[(targets['instrument'] == 'ACIS-S') | (targets['instrument'] == 'ACIS-I')] = 8
+dither_y[(targets['instrument'] == 'HRC-S') | (targets['instrument'] == 'HRC-I')] = 20
+dither_z[(targets['instrument'] == 'HRC-S') | (targets['instrument'] == 'HRC-I')] = 20
+custom_dither_obsids = targets['obsid'][dither_column == 'Y']
+db = DBI(dbi='sybase', server='sqlsao', database='axafocat', user='aca_ops')
+for obs in custom_dither_obsids:
+    query = "SELECT * from dither where obsid = {}".format(obs)
+    dither = db.fetchone(query)
+    dither_y[targets['obsid'] == obs] = dither['y_amp'] * 3600
+    dither_z[targets['obsid'] == obs] = dither['z_amp'] * 3600
+db.conn.close()
+del db
+targets['dither_y'] = dither_y
+targets['dither_z'] = dither_z
+
+
 targets.write(os.path.join(OUTDIR, 'requested_targets.txt'),
               format='ascii.fixed_width_two_line')
+
 
 
 if opt.obsid_file is not None:
@@ -123,6 +147,8 @@ for t in targets:
     # Skip it if it really needs to be redone but we only want existing records
     if redo and opt.only_existing:
         continue
+    t_dy = t['dither_y']
+    t_dz = t['dither_z']
     # Use "str() not in last_data.astype('str')" because it looks like last_data['obsid']
     # is sometimes an integer column and sometimes a string column.
     if redo or last_data is None or str(t['obsid']) not in last_data['obsid'].astype('str') or opt.only_existing:
@@ -133,6 +159,7 @@ for t in targets:
                                          t['instrument'],
                                          (t['type'] == 'DDT') or (t['type'] == 'TOO'),
                                          t['y_offset'], t['z_offset'],
+                                         dither_y=t_dy, dither_z=t_dz,
                                          start=start,
                                          stop=stop,
                                          daystep=opt.daystep,
