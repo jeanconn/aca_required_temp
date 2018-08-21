@@ -50,6 +50,8 @@ def get_options():
                        help="Write out table as processed (good for recovery of long processing)")
     parser.add_argument("--only-existing",
                        action="store_true")
+    parser.add_argument("--creep",
+                        action="store_true")
     opt = parser.parse_args()
     return opt
 
@@ -62,6 +64,10 @@ CYCLE = opt.cycle
 LABEL = 'Outstanding Targets'
 PLANNING_LIMIT = opt.planning_limit
 TASK_DATA = os.path.join(os.environ['SKA'], 'data', 'aca_lts_eval')
+MANVR_ERROR = 60
+
+if opt.creep:
+    MANVR_ERROR = 0
 
 db = DBI(dbi='sybase', server='sqlsao', database='axafocat', user='aca_ops')
 query = """SELECT t.obsid, t.ra, t.dec,
@@ -149,6 +155,12 @@ for t in targets:
         continue
     t_dy = t['dither_y']
     t_dz = t['dither_z']
+    if opt.creep:
+        if t['dither_y'] == 8 and t['dither_z'] == 8:
+            t_dy = 4
+            t_dz = 4
+        else:
+            print("Using creep, but not using reduced dither on {} with dither {} {}".format(t['obsid'], t['dither_y'], t['dither_z']))
     # Use "str() not in last_data.astype('str')" because it looks like last_data['obsid']
     # is sometimes an integer column and sometimes a string column.
     if redo or last_data is None or str(t['obsid']) not in last_data['obsid'].astype('str') or opt.only_existing:
@@ -160,6 +172,7 @@ for t in targets:
                                          (t['type'] == 'DDT') or (t['type'] == 'TOO'),
                                          t['y_offset'], t['z_offset'],
                                          dither_y=t_dy, dither_z=t_dz,
+                                         manvr_error=MANVR_ERROR,
                                          start=start,
                                          stop=stop,
                                          daystep=opt.daystep,
