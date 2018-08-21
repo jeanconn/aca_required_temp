@@ -125,7 +125,7 @@ def max_temp(time, stars, manvr_error):
     halfwidths = np.repeat(120, len(stars))
     halfwidths[0:3] = 160
     # If there is tiny maneuver error, use only small boxes
-    if manvr_error < 5:
+    if manvr_error <= 10:
         halfwidths = np.repeat(60, len(stars))
     id_hash = hashlib.md5(np.sort(stars['AGASC_ID'])).hexdigest()
     if id_hash not in T_CCD_CACHE:

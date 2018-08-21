@@ -64,10 +64,9 @@ CYCLE = opt.cycle
 LABEL = 'Outstanding Targets'
 PLANNING_LIMIT = opt.planning_limit
 TASK_DATA = os.path.join(os.environ['SKA'], 'data', 'aca_lts_eval')
-MANVR_ERROR = 60
+MANVR_ERROR = 10 if opt.creep else 60
 
-if opt.creep:
-    MANVR_ERROR = 0
+
 
 db = DBI(dbi='sybase', server='sqlsao', database='axafocat', user='aca_ops')
 query = """SELECT t.obsid, t.ra, t.dec,
