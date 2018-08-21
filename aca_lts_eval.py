@@ -44,7 +44,7 @@ for guistage in mini_sausage.STAR_CHAR['Guide']:
 
 
 PLANNING_LIMIT = -10.2
-EDGE_DIST = 30
+
 COLD_T_CCD = -16
 WARM_T_CCD = -5
 # explicitly disable MS filter
