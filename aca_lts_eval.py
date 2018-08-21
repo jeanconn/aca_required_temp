@@ -95,6 +95,10 @@ def get_options():
                         default=60,
                         type=float,
                         help="Maneuver error used for box selection in arcsecs")
+    parser.add_argument("--dither",
+                        default=8,
+                        type=float,
+                        help="Dither used for star selection")
     parser.add_argument("--out",
                         default="out",
                         help="Output directory.")
@@ -799,6 +803,7 @@ def main():
                                      too=opt.too,
                                      y_offset=opt.y_offset,
                                      z_offset=opt.z_offset,
+                                     dither_y=opt.dither, dither_z=opt.dither,
                                      manvr_error=opt.manvr_error,
                                      start=DateTime(opt.start),
                                      stop=DateTime(opt.stop),
