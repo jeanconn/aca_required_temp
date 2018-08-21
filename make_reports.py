@@ -68,7 +68,6 @@ MANVR_ERROR = 10 if opt.creep else 60
 
 
 
-db = DBI(dbi='sybase', server='sqlsao', database='axafocat', user='aca_ops')
 query = """SELECT t.obsid, t.ra, t.dec,
 t.type, t.y_det_offset as y_offset, t.z_det_offset as z_offset, 
 t.approved_exposure_time, t.instrument, t.grating, t.dither_flag, t.obs_ao_str, p.ao_str
@@ -80,9 +79,8 @@ AND NOT(t.ra = 0 AND t.dec = 0)
 AND NOT(t.ra IS NULL OR t.dec IS NULL))
 ORDER BY t.obsid"""
 
-targets = Table(db.fetchall(query))
-db.conn.close()
-del db
+with DBI(dbi='sybase', server='sqlsao', database='axafocat', user='aca_ops') as db:
+    targets = Table(db.fetchall(query))
 
 # Get actual dither from the database
 dither_column = targets['dither_flag']
@@ -93,22 +91,20 @@ dither_y[(targets['instrument'] == 'ACIS-S') | (targets['instrument'] == 'ACIS-I
 dither_z[(targets['instrument'] == 'ACIS-S') | (targets['instrument'] == 'ACIS-I')] = 8
 dither_y[(targets['instrument'] == 'HRC-S') | (targets['instrument'] == 'HRC-I')] = 20
 dither_z[(targets['instrument'] == 'HRC-S') | (targets['instrument'] == 'HRC-I')] = 20
+# Mark those with non-default dither
 custom_dither_obsids = targets['obsid'][dither_column == 'Y']
-db = DBI(dbi='sybase', server='sqlsao', database='axafocat', user='aca_ops')
-for obs in custom_dither_obsids:
-    query = "SELECT * from dither where obsid = {}".format(obs)
-    dither = db.fetchone(query)
-    dither_y[targets['obsid'] == obs] = dither['y_amp'] * 3600
-    dither_z[targets['obsid'] == obs] = dither['z_amp'] * 3600
-db.conn.close()
-del db
+# Fetch custom dither from the database for the observations with custom dither
+with DBI(dbi='sybase', server='sqlsao', database='axafocat', user='aca_ops') as db:
+    for obs in custom_dither_obsids:
+        query = "SELECT * from dither where obsid = {}".format(obs)
+        dither = db.fetchone(query)
+        dither_y[targets['obsid'] == obs] = dither['y_amp'] * 3600
+        dither_z[targets['obsid'] == obs] = dither['z_amp'] * 3600
 targets['dither_y'] = dither_y
 targets['dither_z'] = dither_z
 
-
 targets.write(os.path.join(OUTDIR, 'requested_targets.txt'),
               format='ascii.fixed_width_two_line')
-
 
 
 if opt.obsid_file is not None:
