@@ -20,7 +20,7 @@ warnings.filterwarnings(
     message="using `oa_ndim == 0` when `op_axes` is NULL is deprecated.*",
     category=DeprecationWarning)
 
-RELEASE_VERSION = '2.3.1'
+RELEASE_VERSION = '2.4.0'
 
 def get_options():
     import argparse
@@ -50,6 +50,8 @@ def get_options():
                        help="Write out table as processed (good for recovery of long processing)")
     parser.add_argument("--only-existing",
                        action="store_true")
+    parser.add_argument("--creep",
+                        action="store_true")
     opt = parser.parse_args()
     return opt
 
@@ -62,11 +64,13 @@ CYCLE = opt.cycle
 LABEL = 'Outstanding Targets'
 PLANNING_LIMIT = opt.planning_limit
 TASK_DATA = os.path.join(os.environ['SKA'], 'data', 'aca_lts_eval')
+MANVR_ERROR = 10 if opt.creep else 60
 
-db = DBI(dbi='sybase', server='sqlsao', database='axafocat', user='aca_ops')
+
+
 query = """SELECT t.obsid, t.ra, t.dec,
 t.type, t.y_det_offset as y_offset, t.z_det_offset as z_offset, 
-t.approved_exposure_time, t.instrument, t.grating, t.obs_ao_str, p.ao_str
+t.approved_exposure_time, t.instrument, t.grating, t.dither_flag, t.obs_ao_str, p.ao_str
 FROM target t
 right join prop_info p on t.ocat_propid = p.ocat_propid
 WHERE
@@ -75,9 +79,30 @@ AND NOT(t.ra = 0 AND t.dec = 0)
 AND NOT(t.ra IS NULL OR t.dec IS NULL))
 ORDER BY t.obsid"""
 
-targets = Table(db.fetchall(query))
-db.conn.close()
-del db
+with DBI(dbi='sybase', server='sqlsao', database='axafocat', user='aca_ops') as db:
+    targets = Table(db.fetchall(query))
+
+# Get actual dither from the database
+dither_column = targets['dither_flag']
+targets.remove_column('dither_flag')
+dither_y = np.zeros(len(targets))
+dither_z = np.zeros(len(targets))
+dither_y[(targets['instrument'] == 'ACIS-S') | (targets['instrument'] == 'ACIS-I')] = 8
+dither_z[(targets['instrument'] == 'ACIS-S') | (targets['instrument'] == 'ACIS-I')] = 8
+dither_y[(targets['instrument'] == 'HRC-S') | (targets['instrument'] == 'HRC-I')] = 20
+dither_z[(targets['instrument'] == 'HRC-S') | (targets['instrument'] == 'HRC-I')] = 20
+# Mark those with non-default dither
+custom_dither_obsids = targets['obsid'][dither_column == 'Y']
+# Fetch custom dither from the database for the observations with custom dither
+with DBI(dbi='sybase', server='sqlsao', database='axafocat', user='aca_ops') as db:
+    for obs in custom_dither_obsids:
+        query = "SELECT * from dither where obsid = {}".format(obs)
+        dither = db.fetchone(query)
+        dither_y[targets['obsid'] == obs] = dither['y_amp'] * 3600
+        dither_z[targets['obsid'] == obs] = dither['z_amp'] * 3600
+targets['dither_y'] = dither_y
+targets['dither_z'] = dither_z
+
 targets.write(os.path.join(OUTDIR, 'requested_targets.txt'),
               format='ascii.fixed_width_two_line')
 
@@ -123,6 +148,14 @@ for t in targets:
     # Skip it if it really needs to be redone but we only want existing records
     if redo and opt.only_existing:
         continue
+    t_dy = t['dither_y']
+    t_dz = t['dither_z']
+    if opt.creep:
+        if t['dither_y'] == 8 and t['dither_z'] == 8:
+            t_dy = 4
+            t_dz = 4
+        else:
+            print("Using creep, but not using reduced dither on {} with dither {} {}".format(t['obsid'], t['dither_y'], t['dither_z']))
     # Use "str() not in last_data.astype('str')" because it looks like last_data['obsid']
     # is sometimes an integer column and sometimes a string column.
     if redo or last_data is None or str(t['obsid']) not in last_data['obsid'].astype('str') or opt.only_existing:
@@ -133,6 +166,8 @@ for t in targets:
                                          t['instrument'],
                                          (t['type'] == 'DDT') or (t['type'] == 'TOO'),
                                          t['y_offset'], t['z_offset'],
+                                         dither_y=t_dy, dither_z=t_dz,
+                                         manvr_error=MANVR_ERROR,
                                          start=start,
                                          stop=stop,
                                          daystep=opt.daystep,

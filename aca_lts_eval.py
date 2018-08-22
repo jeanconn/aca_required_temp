@@ -44,7 +44,7 @@ for guistage in mini_sausage.STAR_CHAR['Guide']:
 
 
 PLANNING_LIMIT = -10.2
-EDGE_DIST = 30
+
 COLD_T_CCD = -16
 WARM_T_CCD = -5
 # explicitly disable MS filter
@@ -91,6 +91,14 @@ def get_options():
                         type=float,
                         default=0.0,
                         help="Z target offset in arcmin")
+    parser.add_argument("--manvr-error",
+                        default=60,
+                        type=float,
+                        help="Maneuver error used for box selection in arcsecs")
+    parser.add_argument("--dither",
+                        default=8,
+                        type=float,
+                        help="Dither used for star selection")
     parser.add_argument("--out",
                         default="out",
                         help="Output directory.")
@@ -111,11 +119,14 @@ def get_options():
     return opt
 
 
-def max_temp(time, stars):
+def max_temp(time, stars, manvr_error):
     # Sort these by mag to assign big boxes to first 3
     stars.sort('MAG_ACA')
     halfwidths = np.repeat(120, len(stars))
     halfwidths[0:3] = 160
+    # If there is tiny maneuver error, use only small boxes
+    if manvr_error <= 10:
+        halfwidths = np.repeat(60, len(stars))
     id_hash = hashlib.md5(np.sort(stars['AGASC_ID'])).hexdigest()
     if id_hash not in T_CCD_CACHE:
         # Get tuple of (t_ccd, n_acq) for this star field and cache
@@ -181,7 +192,8 @@ def select_ri_guide_stars(ra, dec, cone_stars):
     return G_RI_CAT_CACHE[id_key]
 
 
-def get_t_ccd_roll(ra, dec, cycle, detector, too, y_offset, z_offset, pitch, time, cone_stars):
+def get_t_ccd_roll(ra, dec, cycle, detector, too, y_offset, z_offset, pitch, time,
+                   manvr_error, cone_stars):
     """
     Loop over possible roll range for this pitch and return best
     and nominal temperature/roll combinations
@@ -205,7 +217,7 @@ def get_t_ccd_roll(ra, dec, cycle, detector, too, y_offset, z_offset, pitch, tim
     if abs(y_offset) < .3 and abs(z_offset) < .3:
         guide_stars = select_ri_guide_stars(ra_pnt, dec_pnt, cone_stars)
         acq_stars = select_ri_stars(ra_pnt, dec_pnt, cone_stars)
-        acq_tccd, nacq = max_temp(time=time, stars=acq_stars)
+        acq_tccd, nacq = max_temp(time=time, stars=acq_stars, manvr_error=manvr_error)
         guide_stars.sort('MAG_ACA')
         guide_tccd = t_ccd_warm_limit_for_guide(guide_stars['MAG_ACA']) if len(guide_stars) >= 4 else COLD_T_CCD
         t_ccd = np.min([acq_tccd, guide_tccd])
@@ -226,7 +238,7 @@ def get_t_ccd_roll(ra, dec, cycle, detector, too, y_offset, z_offset, pitch, tim
     acq_stars = select_stars(ra_pnt, dec_pnt, nom_roll, cone_stars)
     guide_stars = select_guide_stars(ra_pnt, dec_pnt, nom_roll, cone_stars)
     guide_stars.sort('MAG_ACA')
-    acq_tccd, nacq = max_temp(time=time, stars=acq_stars)
+    acq_tccd, nacq = max_temp(time=time, stars=acq_stars, manvr_error=manvr_error)
     guide_tccd = t_ccd_warm_limit_for_guide(guide_stars['MAG_ACA']) if len(guide_stars) >= 4 else COLD_T_CCD
     t_ccd = np.min([acq_tccd, guide_tccd])
     nom = {'roll': nom_roll,
@@ -259,6 +271,11 @@ def get_t_ccd_roll(ra, dec, cycle, detector, too, y_offset, z_offset, pitch, tim
     pass_t_ccd = None
     best_is_max = False
     for roll in off_nom_rolls:
+        # Put roll back in the 0 - 360 range
+        if roll > 360:
+            roll -= 360
+        if roll < 0:
+            roll += 360
         q_pnt = calc_aca_from_targ((ra, dec, roll),
                                    (y_offset / 60.) + (aca_offset_y / 3600.),
                                    (z_offset / 60.) + (aca_offset_z / 3600.))
@@ -267,7 +284,7 @@ def get_t_ccd_roll(ra, dec, cycle, detector, too, y_offset, z_offset, pitch, tim
         acq_stars = select_stars(ra_pnt, dec_pnt, roll, cone_stars)
         guide_stars = select_guide_stars(ra_pnt, dec_pnt, roll, cone_stars)
         guide_stars.sort('MAG_ACA')
-        acq_tccd, nacq = max_temp(time=time, stars=acq_stars)
+        acq_tccd, nacq = max_temp(time=time, stars=acq_stars, manvr_error=manvr_error)
         guide_tccd = t_ccd_warm_limit_for_guide(guide_stars['MAG_ACA']) if len(guide_stars) >= 4 else COLD_T_CCD
         t_ccd = np.min([acq_tccd, guide_tccd])
         all_rolls[roll] = t_ccd
@@ -304,7 +321,7 @@ def get_t_ccd_roll(ra, dec, cycle, detector, too, y_offset, z_offset, pitch, tim
             'comment': comment}
 
 
-def t_ccd_for_attitude(ra, dec, cycle, detector, too, y_offset=0, z_offset=0,
+def t_ccd_for_attitude(ra, dec, cycle, detector, too, y_offset=0, z_offset=0, manvr_error=50,
                        start='2014-09-01', stop='2015-12-31', daystep=1, outdir=None):
     # reset the caches at every new attitude
     global T_CCD_CACHE
@@ -436,7 +453,7 @@ def t_ccd_for_attitude(ra, dec, cycle, detector, too, y_offset=0, z_offset=0,
         # Run the temperature thing once to see if this might be good for all rolls
         r_data_check = get_t_ccd_roll(
             ra, dec, cycle, detector, too, y_offset, z_offset,
-            last_good_pitch, time=last_good_day, cone_stars=cone_stars)
+            last_good_pitch, time=last_good_day, manvr_error=manvr_error, cone_stars=cone_stars)
 
 
     for tday in temps:
@@ -475,7 +492,8 @@ def t_ccd_for_attitude(ra, dec, cycle, detector, too, y_offset=0, z_offset=0,
             continue
         t_ccd_roll_data = get_t_ccd_roll(
             ra, dec, cycle, detector, too, y_offset, z_offset,
-            temps[tday]['pitch'], time=temps[tday]['day'], cone_stars=cone_stars)
+            temps[tday]['pitch'], time=temps[tday]['day'], manvr_error=manvr_error,
+            cone_stars=cone_stars)
         all_day_rolls = t_ccd_roll_data['rolls']
         all_rolls.update(all_day_rolls)
         cone_stars = t_ccd_roll_data['cone_stars']
@@ -652,8 +670,11 @@ def check_update_needed(target, obsdir):
     return False
 
 
-def make_target_report(ra, dec, cycle, detector, too, y_offset, z_offset,
-                       start, stop, daystep, obsdir, obsid=None, debug=False, redo=True):
+def make_target_report(ra, dec, cycle, detector, too, y_offset, z_offset, dither_y, dither_z,
+                       manvr_error, start, stop, daystep, obsdir, obsid=None, debug=False, redo=True):
+
+    mini_sausage.set_manvr_error(manvr_error)
+    mini_sausage.set_dither(np.max([dither_y, dither_z]))
     if not os.path.exists(obsdir):
         os.makedirs(obsdir)
     json_parfile = os.path.join(obsdir, 'obsinfo.json')
@@ -669,6 +690,7 @@ def make_target_report(ra, dec, cycle, detector, too, y_offset, z_offset,
             ra, dec,
             cycle, detector, too,
             y_offset, z_offset,
+            manvr_error=manvr_error,
             start=start,
             stop=stop,
             daystep=daystep,
@@ -786,6 +808,8 @@ def main():
                                      too=opt.too,
                                      y_offset=opt.y_offset,
                                      z_offset=opt.z_offset,
+                                     dither_y=opt.dither, dither_z=opt.dither,
+                                     manvr_error=opt.manvr_error,
                                      start=DateTime(opt.start),
                                      stop=DateTime(opt.stop),
                                      daystep=opt.daystep,
