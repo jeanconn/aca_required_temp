@@ -51,7 +51,8 @@ WARM_T_CCD = -5
 set_acq_model_ms_filter(ms_enabled=False)
 
 TASK_DATA = os.path.join(os.environ['SKA'], 'data', 'aca_lts_eval')
-ROLL_TABLE = Table.read(os.path.join(TASK_DATA, 'roll_limits.dat'), format='ascii')
+#ROLL_TABLE = Table.read(os.path.join(TASK_DATA, 'roll_limits.dat'), format='ascii')
+ROLL_TABLE = Table.read('PitchRoll_Allowances.csv', format='ascii')
 
 # Save temperature calc a combination of stars
 # indexed by hash of agasc ids
@@ -146,8 +147,7 @@ def max_temp(time, stars, manvr_error):
 
 
 def get_rolldev(pitch):
-    idx = np.searchsorted(ROLL_TABLE['pitch'], pitch, side='right')
-    return ROLL_TABLE['rolldev'][idx - 1]
+    return np.interp(pitch, ROLL_TABLE['pitch'], ROLL_TABLE['rolldev'])
 
 
 def select_stars(ra, dec, roll, cone_stars):
@@ -198,7 +198,7 @@ def get_t_ccd_roll(ra, dec, cycle, detector, too, y_offset, z_offset, pitch, tim
     Loop over possible roll range for this pitch and return best
     and nominal temperature/roll combinations
     """
-
+    # And the midpoint
     nom_roll = Ska.Sun.nominal_roll(ra, dec, time=time)
     # Round nominal roll to the nearest half degree
     nom_roll = np.round(np.round(nom_roll * 2) / 2., 1)
@@ -212,6 +212,7 @@ def get_t_ccd_roll(ra, dec, cycle, detector, too, y_offset, z_offset, pitch, tim
                                (z_offset / 60.) + (aca_offset_z / 3600.))
     ra_pnt = q_pnt.ra
     dec_pnt = q_pnt.dec
+
     # if the offsets are both small, so the pointing attitude is relatively roll-independent
     # check the relatively roll independent circle
     if abs(y_offset) < .3 and abs(z_offset) < .3:
@@ -258,8 +259,27 @@ def get_t_ccd_roll(ra, dec, cycle, detector, too, y_offset, z_offset, pitch, tim
                 'roll_indep': False,
                 'comment': 'nominal is at max'}
     # check off nominal rolls in allowed range for a better catalog / temperature
-    roll_dev = get_rolldev(pitch)
-    d_roll = 1.0
+    # Pitches for the day
+    # Get the nom rols for the range of the day
+    nom_roll1 = Ska.Sun.nominal_roll(ra, dec, time=DateTime(time).secs - 43200)
+    nom_roll2 = Ska.Sun.nominal_roll(ra, dec, time=DateTime(time).secs + 43200)
+    pitch1 = Ska.Sun.pitch(ra, dec, time=DateTime(time).secs - 43200)
+    pitch2 = Ska.Sun.pitch(ra, dec, time=DateTime(time).secs + 43200)
+    roll_dev1 = get_rolldev(pitch1)
+    roll_dev2 = get_rolldev(pitch2)
+    extents = {'r1_plus': nom_roll1 + roll_dev1,
+               'r2_plus': nom_roll2 + roll_dev2,
+               'r1_minus': nom_roll1 - roll_dev1,
+               'r2_minus': nom_roll2 - roll_dev2}
+    # If 270 to 90, put everybody in -180 to 180 range
+    if nom_roll > 270 or nom_roll < 90:
+        for k in extents:
+            if extents[k] > 180:
+                extents[k] -= 360
+    r_max = np.min([extents['r1_plus'], extents['r2_plus']])
+    r_min = np.max([extents['r1_minus'], extents['r2_minus']])
+    d_roll = 0.5
+    roll_dev = np.min([np.abs(r_max - nom_roll), np.abs(r_min - nom_roll)])
     if roll_dev > d_roll:
         plus_minus_rolls = np.concatenate([[-r, r] for r in
                                            np.arange(d_roll, roll_dev, d_roll)])
@@ -453,7 +473,8 @@ def t_ccd_for_attitude(ra, dec, cycle, detector, too, y_offset=0, z_offset=0, ma
         # Run the temperature thing once to see if this might be good for all rolls
         r_data_check = get_t_ccd_roll(
             ra, dec, cycle, detector, too, y_offset, z_offset,
-            last_good_pitch, time=last_good_day, manvr_error=manvr_error, cone_stars=cone_stars)
+            last_good_pitch, time=last_good_day,
+            manvr_error=manvr_error, cone_stars=cone_stars)
 
 
     for tday in temps:
