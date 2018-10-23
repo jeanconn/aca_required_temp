@@ -21,6 +21,7 @@ import Ska.Sun
 import chandra_aca
 from chandra_aca.transform import calc_aca_from_targ
 from chandra_aca.star_probs import t_ccd_warm_limit, set_acq_model_ms_filter
+from chandra_aca.star_probs import prob_n_acq, acq_success_prob
 from chandra_aca.star_probs import t_ccd_warm_limit_for_guide
 from chandra_aca.drift import get_aca_offsets, get_target_aimpoint
 
@@ -46,7 +47,7 @@ for guistage in mini_sausage.STAR_CHAR['Guide']:
 PLANNING_LIMIT = -10.2
 
 COLD_T_CCD = -16
-WARM_T_CCD = -5
+WARM_T_CCD = -8.2
 # explicitly disable MS filter
 set_acq_model_ms_filter(ms_enabled=False)
 
@@ -131,15 +132,38 @@ def max_temp(time, stars, manvr_error):
     id_hash = hashlib.md5(np.sort(stars['AGASC_ID'])).hexdigest()
     if id_hash not in T_CCD_CACHE:
         # Get tuple of (t_ccd, n_acq) for this star field and cache
-        T_CCD_CACHE[id_hash] = t_ccd_warm_limit(
+        P2_minus_5 = t_ccd_warm_limit(
             date=time,
             mags=stars['MAG_ACA'],
             colors=stars['COLOR1'],
             halfwidths=halfwidths,
-            min_n_acq=(2, 8e-3),
+            min_n_acq=(2, 1e-5),
             cold_t_ccd=COLD_T_CCD,
             warm_t_ccd=WARM_T_CCD,
             model='spline')
+        if P2_minus_5[0] < -10.2:
+            P2_minus_3 = t_ccd_warm_limit(
+                date=time,
+                mags=stars['MAG_ACA'],
+                colors=stars['COLOR1'],
+                halfwidths=halfwidths,
+                min_n_acq=(2, 1e-5),
+                cold_t_ccd=COLD_T_CCD,
+                warm_t_ccd=WARM_T_CCD,
+                model='spline')
+            if P2_minus_3[0] > -10.2:
+                T_CCD_CACHE[id_hash] = prob_n_acq(acq_success_prob(
+                        date=time,
+                        mags=stars['MAG_ACA'],
+                        colors=stars['COLOR1'],
+                        halfwidths=halfwidths,
+                        t_ccd=-10.2,
+                        model='spline'))
+            else:
+                T_CCD_CACHE[id_hash] = P2_minus_3
+        else:
+            T_CCD_CACHE[id_hash] = P2_minus_5
+
 #        print "calc temp for ", id_hash
 #    else:
 #        print "cached temp for ", id_hash
@@ -579,8 +603,9 @@ def t_ccd_for_attitude(ra, dec, cycle, detector, too, y_offset=0, z_offset=0, ma
     # Save anything useful and write out catalogs
     t_ccds = [{'key': key, 't_ccd': T_CCD_CACHE[key][0], 'n_acqs': T_CCD_CACHE[key][1]}
               for key in T_CCD_CACHE]
-    t_ccd_file = os.path.join(outdir, "t_ccd_map.dat")
-    Table(t_ccds).write(t_ccd_file, format='ascii')
+    if len(t_ccds):
+        t_ccd_file = os.path.join(outdir, "t_ccd_map.dat")
+        Table(t_ccds).write(t_ccd_file, format='ascii')
 
     cats = []
     hashes = {}
