@@ -98,6 +98,9 @@ with DBI(dbi='sybase', server='sqlsao', database='axafocat', user='aca_ops') as 
     for obs in custom_dither_obsids:
         query = "SELECT * from dither where obsid = {}".format(obs)
         dither = db.fetchone(query)
+        for ax in ['y_amp', 'z_amp']:
+            if dither[ax] is None:
+                dither[ax] = 0
         dither_y[targets['obsid'] == obs] = dither['y_amp'] * 3600
         dither_z[targets['obsid'] == obs] = dither['z_amp'] * 3600
 targets['dither_y'] = dither_y
@@ -178,8 +181,14 @@ for t in targets:
         if t_ccd_table is not None:
             nom = t_ccd_table['nom_t_ccd'][~np.isnan(t_ccd_table['nom_t_ccd'])]
             best = t_ccd_table['best_t_ccd'][~np.isnan(t_ccd_table['best_t_ccd'])]
-            frac_nom_ok = np.count_nonzero(nom >= PLANNING_LIMIT) * 1.0 / len(nom)
-            frac_best_ok = np.count_nonzero(best >= PLANNING_LIMIT) * 1.0 / len(best)
+            if len(nom) == 0:
+                frac_nom_ok = 0
+            else:
+                frac_nom_ok = np.count_nonzero(nom >= PLANNING_LIMIT) * 1.0 / len(nom)
+            if len(best) == 0:
+                frac_best_ok = 0
+            else:
+                frac_best_ok = np.count_nonzero(best >= PLANNING_LIMIT) * 1.0 / len(best)
             report.append({'obsid': t['obsid'],
                            'obsdir': obsdir,
                            'ra': t['ra'],
