@@ -7,7 +7,7 @@ FLIGHT_ENV = SKA
 # Set the names of all files that get installed
 SHARE = make_reports.py aca_lts_eval aca_lts_eval.py acq_char.py mini_sausage.py 
 TEMPLATES = templates/target.html templates/toptable.html
-DATA = task_schedule.cfg roll_limits.dat
+DATA = task_schedule.cfg roll_limits.dat abell_2146_offsets.dat
 
 include /proj/sot/ska/include/Makefile.FLIGHT
 
